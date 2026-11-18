@@ -1,247 +1,195 @@
 # Tripmate — Product Brief
 
-**Mục đích:** Chốt vấn đề, người dùng mục tiêu, định vị, phạm vi giá trị và các giả định kinh doanh ban đầu của Tripmate trước khi viết PRD và code.
+- **Mục đích:** Xác định vấn đề, đối tượng, giá trị cốt lõi, thị trường và hướng đi của Tripmate trước khi viết bất kỳ dòng code nào.
+- **Phiên bản:** 0.1 (bản nháp để duyệt)
+- **Cập nhật lần cuối:** 18/11/2026
 
-**Phiên bản:** 0.1
+## Tóm tắt
 
-**Cập nhật lần cuối:** 2026-11-17
+Tripmate là web app (PWA) miễn phí, ưu tiên điện thoại, giúp một nhóm bạn lên kế hoạch chuyến đi cùng nhau: bình chọn điểm đến và ngày đi, dựng lịch trình theo ngày, ước tính ngân sách, ghi chi tiêu thật và quyết toán với số giao dịch chuyển khoản ít nhất, kèm mã VietQR. Thành viên vào nhóm chỉ bằng link và một cái tên hiển thị, không cần cài app hay đăng ký.
 
-**Tóm tắt:** Tripmate là web app mobile-first dạng PWA, miễn phí, dành cho nhóm bạn tại Việt Nam. App giúp nhóm đi từ “đang bàn trong chat” đến một chuyến đi có lịch trình, dự toán, chi tiêu thực tế và quyết toán nợ rõ ràng, với số lần chuyển khoản tối thiểu và VietQR.
+Khoảng trống cần nhắm: các app chia tiền quốc tế (Splitwise, Tricount) giải bài toán tiền nhưng không lên kế hoạch chuyến đi; các app lập kế hoạch (Wanderlog, TripIt) giải bài toán lịch trình nhưng yếu hoặc không có chia tiền; và không công cụ nào xây quanh VietQR và thói quen nhóm bạn Việt Nam (Zalo/Messenger).
 
-## 1. Bối cảnh và định vị
+> **Lưu ý về nguồn dữ liệu:** Giá và giới hạn của đối thủ dưới đây tổng hợp từ các bài so sánh/đánh giá năm 2026 (nguồn thứ cấp, một số do đối thủ cạnh tranh viết). Splitwise không công bố rõ giới hạn gói free nên các nguồn lệch nhau. Mọi con số cần kiểm tra lại trên trang chính thức trước khi dùng ra ngoài tài liệu nội bộ.
 
-Một chuyến đi nhóm thường thất bại ở ba điểm: nhóm không chốt được nơi/ngày, kế hoạch bị phân tán trong nhiều tin nhắn, và tiền bạc trở thành việc phải “nhớ rồi tính sau”. Tripmate gom ba việc đó vào một không gian nhẹ, không yêu cầu cài app hay tạo tài khoản trước.
+---
 
-### Giá trị cốt lõi
+## 1. Vấn đề và nỗi đau của người dùng
 
-> Tripmate giúp nhóm bạn chốt kèo nhanh, đi đúng kế hoạch và chia tiền công bằng mà không biến chuyến đi thành một dự án hành chính.
+| ID | Nỗi đau | Tình huống thật |
+|----|---------|-----------------|
+| PP-01 | Thông tin bị trôi trong group chat | Nhóm 8 người rủ nhau đi Đà Lạt. Sau 3 ngày có 400 tin nhắn, ba địa điểm được đề xuất nhưng không ai nhớ ai đã đồng ý cái nào. Người tổ chức phải tự "kéo lại" từng ý. |
+| PP-02 | Chốt ngày đi rất khó | Có 4 ngày cuối tuần khả dĩ, mỗi người bận một kiểu. Người tổ chức nhắn riêng từng người rồi tự ghi vào giấy. Cuối cùng 2 người nói "sao cũng được" rồi lại không đi được. |
+| PP-03 | Người ứng tiền phải nhớ hết | Minh Anh đặt homestay 4.800.000₫ và thuê xe 3.200.000₫ bằng thẻ của mình. Sau chuyến cô phải lội lại lịch sử chat và ảnh hóa đơn để tính ai nợ bao nhiêu. |
+| PP-04 | Chia tiền không đều và dễ sai | Bữa hải sản 1.350.000₫ có người dị ứng không ăn, 2 người ở lại thêm đêm thứ ba. Chia đều thì không công bằng, chia riêng thì máy tính bấm lệch vài nghìn và cãi nhau. |
+| PP-05 | Ngại nhắc nợ | Một bạn còn nợ 85.000₫ sau 2 tuần. Nhắn đòi thì ngại, bỏ qua thì người ứng tiền thấy bất công. Con số nhỏ nhưng làm căng quan hệ. |
+| PP-06 | Chuyển khoản chéo nhau, tốn công | Nhóm 6 người cuối chuyến chuyển qua lại 9–10 lần, trong khi thực tế chỉ cần 4–5 lần. Nhập tay số tài khoản và nội dung dễ sai. |
+| PP-07 | Excel / Google Sheets khó dùng trên điện thoại | Ai cũng sửa được nên có người vô tình xóa công thức. Nhập một dòng chi tiêu trên điện thoại mất cả phút giữa lúc đang đứng ở quán. |
+| PP-08 | App chia tiền đòi đăng ký, giới hạn | Bạn bè lười cài app. Splitwise bản free bị giới hạn số khoản chi mỗi ngày và có quảng cáo, đúng lúc nhóm đang ghi nhiều chi tiêu nhất trong chuyến. |
 
-### Nguyên tắc sản phẩm
+---
 
-| ID | Nguyên tắc | Hệ quả thiết kế/ưu tiên |
-|---|---|---|
-| PRP-01 | Vào được trước, đăng nhập sau | Người nhận link có thể tham gia bằng display name; chỉ yêu cầu nâng cấp tài khoản khi cần giữ dữ liệu lâu dài hoặc đổi thiết bị. |
-| PRP-02 | Mọi thao tác nhóm phải dễ chia sẻ | Trip, poll và lời mời phải có link/QR; kết quả có thể đọc được ngay trong trình duyệt di động. |
-| PRP-03 | Tiền phải minh bạch | Mỗi khoản chi có người trả, người chịu phần và cách chia; không ẩn công thức sau một con số tổng. |
-| PRP-04 | Ít nhập liệu nhưng không mơ hồ | Mặc định hợp lý, nút thêm chi tiêu nhanh, nhưng luôn cho phép xem và sửa chi tiết. |
-| PRP-05 | Miễn phí không đánh đổi niềm tin | Không bán dữ liệu thành viên, không ép quảng cáo chen vào luồng lập kế hoạch/quyết toán. |
-| PRP-06 | Solo developer phải vận hành được | MVP chỉ dùng các dịch vụ free tier và các luồng có thể debug bằng log, migration và test tự động. |
+## 2. Đối tượng người dùng
 
-## 1.1. Định hướng kỹ thuật và triển khai
+| Nhóm | Mô tả | Vai trò | Ưu tiên |
+|------|-------|---------|---------|
+| **Chính — Nhóm bạn 20–35 tuổi** | Đi chơi cuối tuần, 3–10 người, thường 2–4 chuyến mỗi năm. Dùng Zalo/Messenger/TikTok hằng ngày, chuyển khoản qua app ngân hàng quen thuộc. | Người tổ chức (1 người), thành viên (còn lại) | P0 |
+| **Phụ — Đồng nghiệp** | Team building, du lịch công ty nhỏ. Chi tiêu nhiều, cần minh bạch. | Người tổ chức thường là HR hoặc trưởng nhóm | P1 |
+| **Phụ — Gia đình** | Đi chung nhiều gia đình (ông bà, cô dì, họ hàng), nhiều độ tuổi. Chi tiêu chia theo hộ. | Người tổ chức là người trẻ trong nhà | P2 |
 
-| Thành phần | Quyết định MVP | Vai trò |
-|---|---|---|
-| Frontend | React + Vite + TypeScript | PWA mobile-first, build static assets nhanh và dễ deploy trên Cloudflare Pages. |
-| UI | Tailwind CSS + shadcn/ui | Component nhất quán, responsive và có accessibility baseline. |
-| Backend/data | Supabase Auth + Postgres + RLS + Realtime + RPC | Anonymous auth, dữ liệu relational, quyền truy cập và settlement transaction. |
-| Hosting | Cloudflare Pages Free | CDN/static hosting, Git preview và production deploy. |
-| Docker | Dockerfile + Docker Compose cho local/CI | Reproducible build/test; không dùng Docker container runtime trên Cloudflare Free. |
-| Optional server | Supabase Edge Functions hoặc Cloudflare Workers | Chỉ thêm khi mutation/QR cần server-side secret hoặc logic không phù hợp browser. |
+MVP tối ưu cho nhóm bạn. Gia đình cần chia theo "phần" (shares) để xử lý hộ có nhiều người, đã nằm trong phạm vi.
 
-Tripmate không cần SSR cho private app ở MVP; dữ liệu được đọc qua Supabase với RLS. Nếu sau này cần SSR hoặc chạy Docker production, đó là một quyết định kiến trúc mới, không phải dependency của MVP.
+---
 
-## 2. Vấn đề và nỗi đau người dùng
+## 3. Giá trị cốt lõi (1 câu)
 
-| ID | Nỗi đau | Tình huống thực tế | Hậu quả |
-|---|---|---|---|
-| PAIN-01 | Không chốt được điểm đến và ngày đi | Nhóm 6 người có 3 ý tưởng; mỗi người trả lời một thời điểm trong Messenger, sau hai ngày vẫn không biết phương án nào được chọn. | Mất động lực, người tổ chức phải nhắn riêng từng người và tự quyết thay cả nhóm. |
-| PAIN-02 | Thông tin kế hoạch bị phân mảnh | Vé xe ở một tin nhắn, địa chỉ homestay trong ảnh chụp, lịch trình trong Google Sheet, còn giờ tập trung trong chat. | Thành viên xem nhầm phiên bản hoặc không tìm được thông tin khi đang ở ngoài đường. |
-| PAIN-03 | Người tổ chức gánh việc tổng hợp | Một người copy tên, ngày, địa điểm và danh sách việc từ chat sang spreadsheet; mỗi thay đổi phải sửa nhiều nơi. | Chi phí phối hợp cao; người tổ chức dễ bỏ cuộc hoặc áp đặt quyết định. |
-| PAIN-04 | Ngại ghi và nhắc tiền | Một bạn trả 1.200.000₫ tiền xe, bạn khác trả 850.000₫ tiền phòng; mọi người ngại nói “bạn chuyển mình bao nhiêu?”. | Chi phí chưa được ghi đầy đủ, nợ bị nhớ sai và dễ gây khó xử sau chuyến đi. |
-| PAIN-05 | Cách chia tiền không đồng đều | Hóa đơn 600.000₫ có 3 người ăn đủ, 2 người chỉ uống nước; chia đều khiến một số người thấy không công bằng. | Phải tự tính thủ công; số lẻ và các khoản miễn/không tham gia dễ gây tranh cãi. |
-| PAIN-06 | Quyết toán tạo quá nhiều giao dịch | 8 người cùng chi các khoản nhỏ; nếu ai cũng chuyển trực tiếp cho từng người đã trả tiền thì phát sinh hàng chục giao dịch. | Mất phí/thời gian, khó theo dõi ai đã trả, ai còn thiếu. |
-| PAIN-07 | Công cụ hiện có quá nặng hoặc không đúng ngữ cảnh | Splitwise mạnh về expense nhưng thiếu luồng chốt điểm đến/lịch trình; Wanderlog/TripIt thiên về itinerary; spreadsheet linh hoạt nhưng không có quyền và realtime. | Nhóm phải ghép nhiều công cụ, làm tăng ma sát tham gia. |
-| PAIN-08 | Rào cản cài đặt và tài khoản | Một thành viên chỉ muốn tham gia chuyến đi cuối tuần, không muốn cài thêm app hoặc xác minh email. | Người tổ chức phải nhập hộ dữ liệu hoặc thành viên bị đứng ngoài. |
+> **Cả nhóm cùng chốt chuyến đi và chia tiền công bằng chỉ bằng một đường link, không cần cài app, không cần đăng ký, không tốn đồng nào.**
 
-## 3. Đối tượng người dùng
+---
 
-### Đối tượng chính
+## 4. Phân tích đối thủ
 
-| Nhóm | Quy mô điển hình | Bối cảnh | Nhu cầu chính |
-|---|---:|---|---|
-| Nhóm bạn | 3–10 người | Du lịch cuối tuần, đi biển, trekking, road trip | Chốt kèo nhanh, thống nhất lịch, ghi tiền không ngại. |
-| Nhóm đồng nghiệp | 4–20 người | Team outing, company trip nhỏ, ăn uống nhiều đợt | Phân quyền đơn giản, theo dõi người tham gia, quyết toán rõ. |
+### 4.1 Bảng so sánh
 
-### Đối tượng phụ
+| Tiêu chí | Splitwise | Tricount | Wanderlog | TripIt | Messenger/Zalo + Excel | **Tripmate (mục tiêu)** |
+|----------|-----------|----------|-----------|--------|------------------------|-------------------------|
+| Trọng tâm | Chia tiền | Chia tiền | Lập lịch trình trên bản đồ | Gom đặt chỗ thành 1 lịch trình | Trò chuyện + bảng tính | Lập kế hoạch + chia tiền |
+| Bình chọn điểm đến/ngày | Không | Không | Hạn chế | Không | Làm thủ công bằng poll chat | **Có (vote + poll ngày)** |
+| Lịch trình theo ngày | Không | Không | **Rất mạnh** | Mạnh (nhập từ email) | Thủ công | Có (đơn giản) |
+| Ghi chi tiêu, chia tiền | **Mạnh** | **Mạnh** | Ngân sách thủ công, hạn chế bản free | Không có theo dõi chi tiêu | Thủ công | Có |
+| Tối giản nợ | Có | Có | Không | Không | Không | Có |
+| Mã thanh toán VietQR | Không | Không | Không | Không | Không | **Có** |
+| Vào nhóm không cần tài khoản | Cần tài khoản | Có thể tham gia khá nhẹ | Cần tài khoản để sửa | Cần tài khoản | Có | **Có (ẩn danh bằng link)** |
+| Gói miễn phí | Có, nhưng giới hạn khoảng 3–5 khoản/ngày, quảng cáo (nguồn không thống nhất) | Theo các bài 2026: miễn phí, đã bỏ gói trả phí | Có, rộng rãi cho lập kế hoạch và cộng tác | Có, cơ bản | Miễn phí | **Miễn phí** |
+| Gói trả phí | Pro khoảng 39,99–49,99 USD/năm | Không còn (theo nguồn trên) | Pro khoảng 39,99 USD/năm: offline, tối ưu tuyến, xuất PDF, AI không giới hạn | Pro 49 USD/năm: cảnh báo chuyến bay, theo dõi ghế | Không | Không (xem mục 7) |
+| Tiếng Việt, VND | Hạn chế | Hạn chế | Hạn chế | Không | Có | **Có, thiết kế riêng** |
 
-| Nhóm | Bối cảnh | Nhu cầu/giới hạn |
-|---|---|---|
-| Gia đình | 3–8 người, nhiều thế hệ | Giao diện dễ hiểu; có thể thêm thành viên không dùng công nghệ thường xuyên; chia theo hộ hoặc cá nhân. |
-| Người được mời nhưng ít tương tác | Không muốn tham gia thảo luận dài | Xem tóm tắt, vote một chạm, ghi nhận mình có/không tham gia khoản chi. |
-| Người quản lý chi phí | Thường là người trả tiền trước | Nhập nhanh, xem số dư, tạo nội dung chuyển khoản và theo dõi đã trả. |
+### 4.2 Điểm mạnh và yếu
 
-### Không phải đối tượng ưu tiên của MVP
+| Đối thủ | Điểm mạnh | Điểm yếu |
+|---------|-----------|----------|
+| **Splitwise** | Thương hiệu lớn, đủ kiểu chia, tối giản nợ, nhóm không giới hạn | Gói free bị siết (giới hạn số khoản/ngày, quảng cáo, quét hóa đơn thuộc Pro); không có lập kế hoạch; không có VietQR; bắt tạo tài khoản |
+| **Tricount** | Miễn phí, đơn giản, phù hợp chuyến đi | Không lập kế hoạch; không có VietQR; giao diện và ngân hàng thanh toán hướng châu Âu |
+| **Wanderlog** | Trình lập lịch trình theo bản đồ tốt nhất, cộng tác thời gian thực, gói free rộng | Chia tiền gần như không có; tính năng quan trọng khi đi (offline, tối ưu tuyến) nằm ở gói trả phí; người dùng phàn nàn thấy rối, onboarding dài |
+| **TripIt** | Tự gom email đặt chỗ thành lịch trình, rất hợp người bay nhiều | Không có theo dõi chi tiêu; không hướng tới quyết định nhóm; giá trị chính ở gói 49 USD/năm cho khách công tác |
+| **Messenger/Zalo + Excel** | Có sẵn, ai cũng biết | Thông tin trôi, Excel dễ hỏng, không tính nợ tối giản, nhập liệu trên điện thoại chậm |
 
-- Doanh nghiệp cần approval workflow, hóa đơn VAT, ngân sách phòng ban hoặc audit log cấp doanh nghiệp.
-- Công ty lữ hành cần quản lý tour, booking và khách hàng.
-- Người dùng đi một mình hoặc cần quản lý tài chính cá nhân dài hạn.
-- Nhóm quốc tế cần đa tiền tệ, timezone và đa ngôn ngữ ngay từ phiên bản đầu.
+Khác trong phạm vi Việt Nam: một số ngân hàng (ví dụ MyVIB, Techcombank Mobile) có tính năng "quỹ nhóm" để góp và chia tiền trong app ngân hàng, và có vài app nhỏ trên App Store (ví dụ Bill Share, GroupBill). Các giải pháp này gắn với một ngân hàng hoặc chỉ làm chia bill, không làm bình chọn và lịch trình. (Cần khảo sát sâu hơn, xem Câu hỏi mở.)
 
-## 4. Phân tích đối thủ và giải pháp thay thế
+### 4.3 Khoảng trống thị trường
 
-Đánh giá dưới đây tập trung vào việc một nhóm bạn Việt Nam cần chuẩn bị và quyết toán một chuyến đi. Đây là phân tích định hướng sản phẩm, không phải tuyên bố đầy đủ về mọi tính năng hiện tại của từng dịch vụ.
+1. **Không ai nối "quyết định chung" với "tiền".** Người dùng phải dùng 2–3 công cụ cho một chuyến đi.
+2. **Rào cản tham gia.** Bạn bè lười đăng ký/cài app là lý do chính khiến nhóm bỏ app chia tiền.
+3. **Thanh toán cục bộ.** VietQR đã là chuẩn chuyển khoản liên ngân hàng và đang được dùng cực rộng (các số liệu báo chí cuối 2025 nói khoảng 15 triệu giao dịch VietQR mỗi ngày), nhưng các app chia tiền quốc tế không tận dụng được.
+4. **Gói miễn phí ngày càng bị siết** ở các app lớn, tạo cơ hội cho một sản phẩm cam kết miễn phí thật sự.
 
-### Bảng so sánh tính năng
-
-| Giải pháp | Chốt điểm đến/ngày | Itinerary theo ngày | Ghi chi tiêu & chia tiền | Tối giản nợ | VietQR/ngữ cảnh Việt Nam | Vào nhóm không cần cài app | Điểm mạnh | Điểm yếu/khoảng trống |
-|---|---|---|---|---|---|---|---|---|
-| **Tripmate** | **Có: poll và khóa lựa chọn** | **Có: MVP** | **Có: MVP** | **Có: MVP** | **Có: nội dung chuyển khoản + QR** | **Có: PWA + anonymous join** | Một luồng liền mạch, local-first cho VND và nhóm bạn | Sản phẩm mới; chưa có hệ sinh thái booking/map sâu |
-| Splitwise | Hạn chế; không phải trọng tâm | Không phải trọng tâm | Mạnh, nhiều cách chia | Mạnh | Không tối ưu riêng cho VietQR/VND | Có web/app nhưng trải nghiệm phụ thuộc tài khoản/luồng sản phẩm | Expense sharing lâu đời, mô hình số dư rõ | Không giải quyết từ ý tưởng đến lịch trình; một số tính năng nâng cao có thể phụ thuộc gói trả phí |
-| Tricount | Không phải trọng tâm | Không | Mạnh cho nhóm nhỏ và nhập nhanh | Có | Không phải trọng tâm | Tương đối phù hợp cho chia bill | Đơn giản, dễ bắt đầu | Thiếu poll điểm đến/ngày và kế hoạch theo ngày |
-| Wanderlog | Có ở mức lập kế hoạch | Mạnh | Có nhưng không phải trọng tâm quyết toán nhóm | Không phải điểm mạnh | Không ưu tiên VietQR | Có web/app | Itinerary, địa điểm và bản đồ trực quan | Luồng expense/settlement không phải trung tâm; có thể quá nhiều cho chuyến ngắn |
-| TripIt | Không | Mạnh về tổng hợp booking | Không phải trọng tâm | Không | Không | Có web/app | Quản lý reservation và lịch trình cá nhân | Không tối ưu cho đồng quyết định, chi tiêu chung và nhóm bạn tự tổ chức |
-| Messenger + Excel/Google Sheets | Có qua chat, thủ công | Có nếu tự làm | Có nhưng tự tính | Không tự động | Có thể dán QR nhưng không theo dõi trạng thái | Rất dễ tiếp cận | Không cần học công cụ mới; mọi người đã dùng | Dữ liệu phân mảnh, quyền chỉnh sửa khó kiểm soát, không realtime có cấu trúc, lỗi công thức và thiếu audit |
-
-### Khoảng trống thị trường
-
-1. **Khoảng trống theo luồng:** các công cụ thường tối ưu một đoạn (itinerary hoặc expense), trong khi nhóm bạn cần một luồng liên tục: đề xuất → vote → chốt → lên lịch → chi tiền → quyết toán.
-2. **Khoảng trống về ma sát tham gia:** thành viên chỉ cần display name và link để tham gia một chuyến đi ngắn; không nên bị chặn bởi app install hoặc onboarding dài.
-3. **Khoảng trống bản địa hóa thanh toán:** VND nguyên số, tên ngân hàng, nội dung chuyển khoản và VietQR cần được coi là một phần của settlement chứ không phải ghi chú ngoài hệ thống.
-4. **Khoảng trống về tính công bằng có thể giải thích:** nhóm cần thấy khoản nào được chia đều, theo phần hay theo người tham gia; một con số nợ cuối cùng không đủ tạo niềm tin.
-5. **Khoảng trống về nhóm nhỏ:** nhóm 3–10 người cần workflow nhanh hơn spreadsheet nhưng không cần bộ tính năng của một nền tảng travel hoặc expense enterprise.
+---
 
 ## 5. Điểm khác biệt của Tripmate
 
-| ID | Khác biệt | Vì sao có giá trị | Cách kiểm chứng trong MVP |
-|---|---|---|---|
-| DIF-01 | Một workspace cho cả quyết định, lịch trình và tiền | Giảm việc copy dữ liệu giữa chat, sheet và app khác | Một trip hoàn chỉnh có poll, itinerary, expense và settlement trong cùng URL. |
-| DIF-02 | Join bằng link/QR với display name | Tăng tỷ lệ người được mời thực sự tham gia | Đo tỷ lệ invite link mở → hoàn tất join. |
-| DIF-03 | “Chốt kèo” là trạng thái rõ ràng | Tránh lịch trình tiếp tục thay đổi sau khi đã thống nhất | Có action khóa poll/ngày/điểm đến và hiển thị trạng thái đã chốt. |
-| DIF-04 | Settlement tối giản giao dịch | Giảm số lần chuyển khoản và công sức đối chiếu | So sánh số transfer trước/sau tối giản; mỗi transfer có trạng thái đã trả. |
-| DIF-05 | VietQR và VND là mặc định | Phù hợp hành vi thanh toán phổ biến tại Việt Nam | Sinh được nội dung/QR cho từng khoản phải trả; không dùng số thập phân. |
-| DIF-06 | Giao diện mobile-first, nhập chi tiêu trong vài giây | Ghi đúng lúc phát sinh thay vì nhớ đến cuối chuyến | Theo dõi thời gian từ mở form đến lưu expense trong test người dùng. |
+| ID | Điểm khác biệt | Vì sao khó sao chép nhanh |
+|----|----------------|---------------------------|
+| DF-01 | **Vào nhóm bằng link + tên hiển thị**, không cài app, không đăng ký | Đối thủ lớn dựa vào tài khoản để làm kinh doanh |
+| DF-02 | **Một nơi cho cả hành trình**: vote → lịch trình → chi tiêu → quyết toán | Phải giữ sản phẩm nhỏ gọn, không chạy theo tính năng của từng mảng |
+| DF-03 | **Quyết toán ra đúng số lần chuyển khoản ít nhất, kèm VietQR** đã điền sẵn số tiền và nội dung | Cần hiểu chuẩn VietQR và thói quen ngân hàng Việt |
+| DF-04 | **Thành viên ảo**: nhập người chưa vào app, về sau nhận lại khi họ tham gia | Là thiết kế dữ liệu, không phải tính năng bề mặt |
+| DF-05 | **Giao diện tiếng Việt, VND nguyên (không số thập phân), giọng văn thân thiện** | Địa phương hóa thật, không phải bản dịch |
 
-## 6. Mục tiêu và chỉ số thành công trong 3 tháng đầu
+---
 
-### Mục tiêu sản phẩm
+## 6. Mục tiêu và KPI (3 tháng đầu sau ra mắt)
 
-| ID | Mục tiêu | Kết quả kỳ vọng sau 3 tháng |
-|---|---|---|
-| GOAL-01 | Chứng minh nhóm bạn có thể tổ chức chuyến đi bằng một công cụ duy nhất | Ít nhất 100 nhóm tạo trip; ít nhất 40 nhóm có itinerary hoặc poll đã chốt. |
-| GOAL-02 | Chứng minh lời mời có thể lan truyền tự nhiên | Tỷ lệ link được mời → người hoàn tất join đạt tối thiểu 60%. |
-| GOAL-03 | Chứng minh tính năng tiền giải quyết nỗi đau thật | Ít nhất 30 chuyến có từ 3 expense trở lên; ít nhất 20 chuyến hoàn tất settlement. |
-| GOAL-04 | Giữ trải nghiệm đủ đơn giản cho người dùng không kỹ thuật | Ít nhất 80% người test kín hoàn tất join và thêm một expense mà không cần hướng dẫn trực tiếp. |
-| GOAL-05 | Vận hành trong phạm vi solo developer | Chi phí dịch vụ cốt lõi bằng 0 hoặc trong free tier; không có lỗi P0 chưa xử lý ở bản public MVP. |
+Các ngưỡng dưới đây là **giả định khởi điểm** cho một dự án solo dev, cần điều chỉnh sau thử nghiệm kín.
 
-### KPI định nghĩa cụ thể
+| ID | KPI | Mục tiêu tháng 1 | Mục tiêu tháng 3 | Cách đo |
+|----|-----|------------------|------------------|---------|
+| KPI-01 | Số chuyến đi được tạo (tích lũy) | 40 | 200 | Đếm bản ghi `trips` |
+| KPI-02 | Tỷ lệ chuyến có từ 3 thành viên trở lên | 50% | 60% | `trip_members` đã vào (không tính thành viên ảo) |
+| KPI-03 | Tỷ lệ người được mời bấm link và vào nhóm | 55% | 65% | Lượt mở link mời so với lượt join thành công |
+| KPI-04 | Thời gian từ mở link đến vào nhóm | dưới 30 giây | dưới 20 giây (trung vị) | Sự kiện client |
+| KPI-05 | Số chuyến có ít nhất 5 khoản chi | 20 | 100 | `expenses` |
+| KPI-06 | Số chuyến hoàn tất quyết toán (mọi khoản chuyển đã đánh dấu đã trả) | 8 | 50 | `settlements` |
+| KPI-07 | Tỷ lệ organizer quay lại tạo chuyến thứ hai | — | 25% | Theo định danh organizer |
+| KPI-08 | Lỗi nghiêm trọng (Sentry) trên mỗi 1.000 phiên | dưới 5 | dưới 2 | Sentry |
 
-| KPI | Công thức | Mục tiêu tháng 1 | Mục tiêu tháng 3 | Ghi chú đo lường |
-|---|---|---:|---:|---|
-| Nhóm tạo trip | Số trip mới có tên và người tạo hợp lệ | 20 | 100 lũy kế | Không tính trip test nội bộ. |
-| Invite join rate | Thành viên hoàn tất join / số lượt mở invite link | 50% | 60% | Theo trip, báo cáo median và phân vị; không lưu nội dung link thô nếu không cần. |
-| Activation rate | Trip có ít nhất 1 poll hoặc 1 itinerary item hoặc 1 expense / trip tạo | 40% | 65% | Dùng để phát hiện onboarding quá khó. |
-| Expense adoption | Trip có ≥3 expense / trip đã active | 30% | 50% | ≥3 giúp phân biệt dùng thử với nhu cầu thật. |
-| Settlement completion | Trip đã đánh dấu hoàn tất settlement / trip có số dư khác 0 | 30% | 50% | “Hoàn tất” cần toàn bộ transfer được đánh dấu đã trả hoặc nhóm chọn đóng sổ. |
-| Time to first value | Thời gian từ join đến vote/expense đầu tiên | ≤5 phút | ≤3 phút | Đo trên cohort test kín; không đặt mục tiêu tuyệt đối cho mọi người dùng. |
-| Retention theo trip | Người tạo quay lại mở trip trong 7 ngày / người tạo trip | 25% | 35% | Chỉ là chỉ báo sớm, không coi là product-market fit. |
-| Reliability | Tỷ lệ request không lỗi 5xx | ≥99% | ≥99.5% | Đo theo server logs/Sentry, loại trừ sự cố của bên thứ ba nếu đã ghi nhận. |
-| Feedback usefulness | Feedback có hành động cụ thể / tổng feedback hợp lệ | ≥60% | ≥70% | Dùng để ưu tiên backlog, không phải vanity metric. |
+Chỉ số "ngôi sao dẫn đường" (North Star): **số chuyến hoàn tất quyết toán**, vì nó chứng minh app đi hết vòng giá trị.
 
-### Guardrail metrics
-
-- Không có incident làm lộ dữ liệu của trip này sang trip khác.
-- Tỷ lệ báo cáo “không biết ai có thể xem khoản chi” dưới 5% trong test kín.
-- Tỷ lệ expense bị sửa/xóa trong 24 giờ đầu không vượt 25%; nếu cao, form nhập đang gây hiểu nhầm.
-- Không chèn quảng cáo vào màn hình join, thêm expense hoặc settlement trong giai đoạn MVP.
+---
 
 ## 7. Mô hình bền vững khi app miễn phí
 
-Tripmate chưa cần kiếm tiền trong MVP. Mục tiêu trước mắt là chứng minh retention theo trip và chi phí vận hành. Các phương án sau chỉ được triển khai khi không phá vỡ niềm tin và tốc độ sử dụng.
+### 7.1 Chi phí vận hành dự kiến
 
-| Phương án | Thời điểm phù hợp | Cách triển khai nhẹ | Rủi ro | Nguyên tắc bảo vệ trải nghiệm |
-|---|---|---|---|---|
-| Affiliate travel | Sau khi có dữ liệu nhu cầu đủ lớn và nội dung rõ ràng | Hiển thị gợi ý chỗ ở/hoạt động liên quan đến điểm đã chốt, gắn nhãn tài trợ/affiliate | Làm người dùng nghi ngờ app ưu tiên nơi có hoa hồng | Không thay đổi kết quả vote; không hiển thị trước khi nhóm chốt hoặc khi chưa có ngữ cảnh. |
-| Đối tác địa phương | Sau pilot ở một vài địa điểm | Mã ưu đãi cho dịch vụ phù hợp nhóm nhỏ | Khó kiểm soát chất lượng | Chỉ hợp tác với đối tác có điều khoản rõ, không bán dữ liệu thành viên. |
-| Quảng cáo nhẹ | Chỉ cân nhắc khi DAU và chi phí tăng | Một vị trí tĩnh ở trang tổng quan, không dùng quảng cáo theo dữ liệu nhạy cảm | Làm app mất cảm giác tối giản | Không quảng cáo trong luồng thanh toán/quyết toán; frequency cap; có thể đóng. |
-| Donate/tip jar | Có thể thử sớm với nhóm yêu thích sản phẩm | Nút ủng hộ không gây áp lực | Doanh thu thấp, tạo thêm payment flow | Không khóa tính năng; hiển thị thưa và minh bạch. |
-| Gói hỗ trợ nhóm lớn | Sau khi xác định nhu cầu thật | Dung lượng/lưu trữ/retention dài hơn hoặc export nâng cao | Làm rối định vị “free” | Core workflow vẫn miễn phí; chỉ thu phí chi phí hạ tầng tăng thêm. |
+Chạy trên gói free của Supabase và hosting. Chi phí tiền mặt gần bằng 0 ở giai đoạn đầu, chủ yếu là tên miền (khoảng vài trăm nghìn đồng mỗi năm).
 
-### Nguyên tắc monetization
+### 7.2 Các nguồn thu tiềm năng
 
-| ID | Nguyên tắc |
-|---|---|
-| MON-01 | Không bán hoặc chia sẻ dữ liệu cá nhân, dữ liệu ngân hàng, lịch sử chi tiêu cho bên thứ ba. |
-| MON-02 | Không dùng quảng cáo để chặn thao tác cần thiết hoặc làm nhầm với nút chức năng. |
-| MON-03 | Gắn nhãn rõ cho affiliate/sponsored content; không can thiệp vào vote và settlement. |
-| MON-04 | Người dùng luôn có thể hoàn tất chuyến đi và quyết toán ở gói miễn phí. |
-| MON-05 | Chỉ mở rộng monetization sau khi chi phí free tier và tỷ lệ sử dụng được đo bằng dữ liệu thật. |
+| Nguồn thu | Cách làm | Mức độ phù hợp | Điều kiện bắt đầu |
+|-----------|----------|----------------|-------------------|
+| **Donate (tự nguyện)** | Mã VietQR "mời cà phê" ở màn hình tổng kết, không bắt buộc | Cao, ít xung đột trải nghiệm | Có người dùng thật |
+| **Affiliate** | Gợi ý khách sạn/xe/vé (ví dụ qua nền tảng đặt phòng có chương trình liên kết) ở tab Ý tưởng, gắn nhãn rõ "liên kết giới thiệu" | Trung bình, cần lưu lượng | Từ 500 chuyến/tháng |
+| **Đối tác địa phương** | Homestay, tour nhỏ trả phí để xuất hiện trong gợi ý | Trung bình | Có dữ liệu điểm đến |
+| **Quảng cáo nhẹ** | Một banner tĩnh ở trang chủ, không bao giờ ở màn chi tiêu/quyết toán | Thấp, ưu tiên cuối | Cân nhắc kỹ |
+
+### 7.3 Nguyên tắc không làm hỏng trải nghiệm
+
+1. **Không chặn tính năng cốt lõi bằng tiền.** Vote, lịch trình, ghi chi tiêu, quyết toán, VietQR luôn miễn phí và không giới hạn số khoản/ngày.
+2. **Không quảng cáo ở màn hình tiền và quyết toán.**
+3. **Không bán dữ liệu cá nhân**, đặc biệt thông tin ngân hàng.
+4. **Gợi ý thương mại phải gắn nhãn rõ và không đẩy lên trên nội dung của nhóm.**
+5. **Không thu thập thêm dữ liệu chỉ để phục vụ thương mại.**
+
+### 7.4 Ràng buộc quan trọng về hosting (phát hiện khi nghiên cứu)
+
+Gói **Vercel Hobby chỉ dành cho dự án cá nhân, phi thương mại**; mọi hoạt động có doanh thu (kể cả quảng cáo, affiliate) cần gói Pro 20 USD/người/tháng. Điều này có nghĩa:
+
+- MVP chưa có doanh thu vẫn nằm trong phạm vi Hobby.
+- **Trước khi bật bất kỳ nguồn thu nào** (kể cả donate nếu bị coi là doanh thu) phải chuyển sang host cho phép thương mại (Cloudflare Pages/Netlify) hoặc nâng lên Vercel Pro. Chi tiết ở `06-architecture.md` và mục "Quyết định cần chốt" bên dưới.
+
+---
 
 ## 8. Rủi ro và cách giảm thiểu
 
-| ID | Rủi ro | Xác suất | Tác động | Dấu hiệu sớm | Giảm thiểu trong MVP |
-|---|---|---|---|---|---|
-| RISK-01 | Thành viên không join vì ngại tài khoản hoặc link lạ | Cao | Cao | Invite open cao nhưng join thấp | Join bằng anonymous auth, hiển thị tên trip/người mời trước khi nhập tên, link có preview rõ. |
-| RISK-02 | Người dùng mất dữ liệu khi anonymous session đổi thiết bị | Cao | Cao | Hỏi hỗ trợ “trip biến mất” | Hiển thị hướng dẫn nâng cấp Google; cho chủ trip export/backup tối thiểu; nêu rõ giới hạn anonymous. |
-| RISK-03 | Tính toán chia tiền sai hoặc không giải thích được | Trung bình | Rất cao | Người dùng sửa tay kết quả hoặc không dám đánh dấu trả | Unit test nhiều edge case, hiển thị breakdown, mọi số tiền là integer VND, audit lịch sử sửa. |
-| RISK-04 | RLS cấu hình sai làm lộ trip | Trung bình | Rất cao | Test môi trường staging truy cập chéo thất bại | Viết policy theo trip membership, test bằng nhiều user/session, deny-by-default. |
-| RISK-05 | Phạm vi quá rộng với solo developer | Cao | Cao | Các module đều dang dở sau tuần 4 | Chốt vertical slice; non-goals rõ; chưa làm booking, chat riêng, OCR, đa tiền tệ. |
-| RISK-06 | Free tier bị vượt do realtime hoặc abuse link | Trung bình | Cao | Spike request, database size, bandwidth | Rate limit, giới hạn kích thước trip, pagination, unsubscribe realtime khi rời màn hình, theo dõi quota. |
-| RISK-07 | Poll và itinerary không được dùng vì nhóm vẫn ở Messenger | Cao | Trung bình | Trip tạo nhưng không có activation event | Link chia sẻ phải mở thẳng đúng context; cho phép copy summary và invite; tối ưu một-tap action. |
-| RISK-08 | Mâu thuẫn trong nhóm về khoản chi | Trung bình | Cao | Expense bị sửa/xóa nhiều hoặc dispute | Lưu người tạo, thời điểm, lịch sử thay đổi; phân biệt “đã trả” và “đã xác nhận”. |
-| RISK-09 | VietQR/ngân hàng thay đổi hoặc QR không quét được | Trung bình | Cao | Người dùng báo mã lỗi | Chỉ tạo payload theo chuẩn đã kiểm chứng, cho phép copy thông tin chuyển khoản thủ công, ghi rõ QR không tự xác nhận giao dịch. |
-| RISK-10 | PWA/offline làm hiển thị dữ liệu cũ gây hiểu nhầm | Trung bình | Trung bình | Expense trùng hoặc trạng thái sai khi online lại | MVP offline ưu tiên read cache và draft; queue ghi dữ liệu chỉ làm sau khi có conflict strategy và idempotency. |
-| RISK-11 | Dữ liệu nhạy cảm trong QR/expense bị chụp hoặc chia sẻ | Trung bình | Cao | User concern về số tài khoản | Mặc định che bớt thông tin, chỉ hiện khi người dùng yêu cầu; không log raw bank data; tài liệu hóa quyền xem. |
-| RISK-12 | Đo lường quá nhiều làm ảnh hưởng quyền riêng tư | Trung bình | Trung bình | Người dùng phản ứng với analytics | Event tối thiểu, không ghi nội dung expense/ghi chú hoặc tên thành viên vào analytics. |
+| ID | Rủi ro | Xác suất | Tác động | Cách giảm thiểu |
+|----|--------|----------|----------|-----------------|
+| RK-01 | Người dùng ẩn danh mất phiên (xóa cookie, đổi máy) và mất quyền vào nhóm | Cao | Cao | Gợi ý nâng cấp lên Google sau khoản chi đầu tiên; link khôi phục cá nhân; chọn lại "Tôi là…" |
+| RK-02 | Supabase free: dự án bị **tạm dừng sau 7 ngày không hoạt động**; không có backup tự động | Trung bình | Cao | Cron ping định kỳ (GitHub Actions); `pg_dump` hằng tuần lưu ngoài; theo dõi dung lượng, nâng gói khi tới khoảng 400 MB |
+| RK-03 | Vi phạm điều khoản Vercel Hobby khi bắt đầu thu tiền | Trung bình | Trung bình | Quyết định host dài hạn sớm (mục 7.4) |
+| RK-04 | Lạm dụng link mời (spam, đoán mã, bot tạo tài khoản ẩn danh) | Trung bình | Trung bình | Mã mời dài ngẫu nhiên, giới hạn tốc độ, CAPTCHA, chủ nhóm đổi mã mời |
+| RK-05 | Lộ thông tin ngân hàng | Thấp | Rất cao | Chỉ người nợ mới thấy số tài khoản người nhận qua RPC; RLS chặt; không log |
+| RK-06 | Sai số tiền khi chia (làm tròn) gây mất niềm tin | Trung bình | Cao | Quy tắc làm tròn rõ ràng + bộ test (xem `08`) |
+| RK-07 | Mã VietQR không quét được ở một số ngân hàng | Trung bình | Trung bình | Test trên nhiều app ngân hàng; luôn kèm số tài khoản dạng văn bản để sao chép |
+| RK-08 | Solo dev quá tải, scope phình | Cao | Cao | Lát cắt dọc mỏng nhất trước; hoãn kéo thả, OCR, đa tiền tệ |
+| RK-09 | Luật bảo vệ dữ liệu cá nhân (số tài khoản, tên) | Trung bình | Trung bình | Thu thập tối thiểu, chính sách riêng tư tiếng Việt, tính năng xóa dữ liệu |
+| RK-10 | Người dùng thấy app giống app chia tiền thông thường, không có lý do chuyển | Trung bình | Cao | Nhấn mạnh DF-01 và DF-03 trong thông điệp; thử nghiệm kín để kiểm chứng |
 
-## 9. Các yêu cầu cấp sản phẩm cho tài liệu sau
+---
 
-Các ID dưới đây là baseline. PRD phải mở rộng chúng thành acceptance criteria cụ thể; kiến trúc và database không được mâu thuẫn với các cam kết này.
+## 9. Nguồn tham khảo (tra cứu 11/2026)
 
-| ID | Yêu cầu cấp cao | Mức ưu tiên ban đầu |
-|---|---|---|
-| FR-01 | Người dùng có thể tạo một trip với tên, điểm đến tùy chọn, ngày tùy chọn và display name của người tạo. | Must |
-| FR-02 | Người được mời có thể tham gia trip bằng link hoặc QR với display name, không cần cài app hoặc đăng ký email trước. | Must |
-| FR-03 | Thành viên có thể đề xuất và bình chọn điểm đến/ngày; người có quyền có thể khóa lựa chọn. | Must |
-| FR-04 | Nhóm có thể tạo và sắp xếp itinerary theo ngày, gồm địa điểm, thời gian, ghi chú và ý tưởng nguồn. | Must |
-| FR-05 | Thành viên có thể tạo expense bằng VND integer, người trả, danh mục, thời gian, ghi chú và danh sách người chịu phần. | Must |
-| FR-06 | Expense hỗ trợ ít nhất chia đều, chia theo số tiền và loại trừ người không tham gia; PRD sẽ chốt thêm %/shares. | Must |
-| FR-07 | Trip hiển thị số dư ròng của từng thành viên và danh sách transfer đã tối giản. | Must |
-| FR-08 | Người nhận tiền có thể hiển thị thông tin chuyển khoản/VietQR và người trả có thể đánh dấu đã trả; app không tự tuyên bố giao dịch ngân hàng thành công. | Must |
-| FR-09 | Chủ trip có thể quản lý vai trò tối thiểu: owner và member; mọi quyền nhạy cảm phải kiểm tra ở server/RLS. | Must |
-| FR-10 | Các thay đổi quan trọng của cùng một trip được cập nhật realtime hoặc có cơ chế refresh rõ ràng. | Should |
-| FR-11 | Thành viên có thể nâng cấp anonymous identity lên tài khoản Google mà không mất trip/member history. | Should |
-| FR-12 | App hỗ trợ VND không có số thập phân, định dạng dễ đọc theo locale Việt Nam và không dùng floating point cho tiền. | Must |
-| NFR-01 | Dùng được trên màn hình di động phổ biến, luồng join và thêm expense có thể hoàn tất bằng một tay. | Must |
-| NFR-02 | RLS bảo đảm user chỉ đọc/ghi dữ liệu của trip mà identity của họ là thành viên hợp lệ. | Must |
-| NFR-03 | Không ghi raw bank credentials hoặc nội dung nhạy cảm vào analytics/logs; dữ liệu tối thiểu cần thiết cho MVP. | Must |
-| NFR-04 | Các thao tác đọc chính có p95 mục tiêu dưới 2 giây trong điều kiện mạng 4G ổn định và dữ liệu trip nhỏ. | Should |
-| NFR-05 | MVP chạy được trong free tier dự kiến của Supabase và Cloudflare Pages với quota monitoring; Docker chỉ phục vụ local/CI. | Must |
-| NFR-06 | App có thể cài như PWA và có trạng thái offline tối thiểu không gây mất hoặc nhân đôi expense. | Should |
+- Giá và giới hạn Splitwise: các bài tổng hợp/so sánh năm 2026 (getfinny.app, localsinsider.com, split-circle, splitty).
+- Wanderlog: các bài đánh giá 2026 (endlesstravelplans.com, monkeytravel.app, stippl.io, pilotplans.com).
+- TripIt: tripit.com/web/pro/pricing (qua xpay.sh), các bài so sánh 2026.
+- Chuẩn VietQR: bài viết kỹ thuật trên Viblo, tin của VTV/Tuổi Trẻ/VnEconomy về NAPAS.
+- Giới hạn Supabase: cloudzero.com, jetadmin.io, makerkit.dev (kiểm tra lại tại supabase.com/pricing).
+- Giới hạn Vercel: vercel.com/docs/limits/fair-use-guidelines và các bài tổng hợp 2026.
 
-## 10. Tiêu chí thành công của Product Brief
-
-Bước tiếp theo chỉ nên bắt đầu khi các điểm sau đã được chốt hoặc chuyển rõ sang “Câu hỏi mở”:
-
-- Tripmate được định vị là công cụ điều phối chuyến đi nhóm, không phải banking app và không phải booking marketplace.
-- MVP ưu tiên nhóm 3–10 người tại Việt Nam, tiền VND, mobile-first.
-- Anonymous join là cam kết trải nghiệm, nhưng dữ liệu dài hạn và đổi thiết bị cần một cơ chế nâng cấp identity.
-- Settlement phải giải thích được và tối giản số transfer, nhưng không xác nhận giao dịch ngân hàng tự động.
-- KPI tập trung vào trip active và settlement completion thay vì chỉ đếm lượt đăng ký.
+---
 
 ## Câu hỏi mở
 
-1. Tripmate ưu tiên trước nhóm bạn 3–10 người hay nhóm đồng nghiệp 4–20 người? Hai nhóm này có thể cần quyền và ngôn ngữ khác nhau.
-2. Chủ trip có được xem và chỉnh mọi expense không, hay chỉ người tạo expense mới được sửa/xóa?
-3. “Đã quyết toán” nghĩa là tất cả transfer đã được người nhận xác nhận, hay cho phép owner đóng sổ dù còn transfer chưa xác nhận?
-4. Có cho phép một người tham gia nhiều vai trò/“hộ” trong cùng trip không, ví dụ một thành viên nhập chi phí cho cả gia đình?
-5. Thành viên anonymous có thể truy cập trip trong bao lâu nếu không nâng cấp tài khoản? Có cần cơ chế khôi phục bằng invite link không?
-6. VietQR MVP sẽ hỗ trợ các ngân hàng phổ biến qua `bankBin`/`accountNumber`/`accountName` do người dùng nhập, hay chỉ copy nội dung chuyển khoản trước và hoãn QR?
-7. Có cần cho phép trip không có điểm đến/ngày ở thời điểm tạo, hay bắt buộc tối thiểu một trong hai trường?
-8. Người dùng có quyền xóa hoàn toàn trip và dữ liệu liên quan ngay từ MVP không, hay chỉ soft delete/ẩn khỏi danh sách?
-9. Có cần export CSV/JSON cho trip ở MVP để giảm rủi ro anonymous session mất dữ liệu không?
-10. KPI 100 trip trong 3 tháng là mục tiêu bắt buộc hay chỉ là mục tiêu thăm dò; có cohort test kín riêng với nhóm thật không?
-11. Phạm vi “offline” ở MVP chỉ là xem cache và lưu draft, hay phải cho phép tạo expense khi mất mạng rồi đồng bộ sau?
-12. Cho phép hiển thị affiliate/đối tác trong 3 tháng đầu hay giữ hoàn toàn không thương mại cho đến sau pilot?
+1. Tricount thực sự đã bỏ gói trả phí và không giới hạn? Nguồn có thể lệch, cần kiểm tra trực tiếp trên app/trang chính thức.
+2. Có app chia tiền/lập chuyến nào đang có lượng người dùng đáng kể ở Việt Nam mà chưa tìm thấy không (ví dụ app trong nước, mini-app trên Zalo, ví MoMo/ZaloPay)?
+3. Nhóm mục tiêu chính có thực sự ưu tiên "bình chọn + lịch trình" hay chỉ cần chia tiền? Cần xác nhận qua phỏng vấn 10 người.
+4. Tên "Tripmate" đã có ai đăng ký thương hiệu/tên miền chưa?
+5. Nhóm đồng nghiệp và gia đình có cần tính năng riêng (xuất báo cáo, chia theo hộ) ngay MVP không?
+6. Donate qua VietQR cá nhân có phát sinh nghĩa vụ thuế hoặc bị coi là doanh thu theo điều khoản hosting không?
 
 ## Quyết định cần chốt
 
-| Mã | Quyết định | Đề xuất mặc định |
-|---|---|---|
-| DEC-01 | Primary segment | Nhóm bạn 3–10 người; validate nhóm đồng nghiệp trong pilot nhưng không tối ưu quyền doanh nghiệp. |
-| DEC-02 | MVP scope | Poll điểm đến/ngày + itinerary ngày + expense + settlement + VietQR payload + anonymous join. |
-| DEC-03 | Authentication | Anonymous Supabase Auth cho join; Google upgrade là Should, không chặn core flow. |
-| DEC-04 | Money model | VND integer `bigint`; không hỗ trợ đa tiền tệ hoặc số thập phân trong MVP. |
-| DEC-05 | Settlement confirmation | QR chỉ hỗ trợ thanh toán thủ công; người dùng tự đánh dấu và người nhận xác nhận, không tích hợp đối soát ngân hàng. |
-| DEC-06 | Offline | MVP chỉ cache đọc và draft an toàn; offline write queue là phạm vi sau khi đã có idempotency/conflict design. |
-| DEC-07 | Monetization | Không quảng cáo/affiliate trong MVP; chỉ đo usage và chi phí để quyết định sau pilot. |
-| DEC-08 | Data deletion | Soft delete cho dữ liệu nghiệp vụ; cần bổ sung flow xóa tài khoản/xóa dữ liệu theo yêu cầu riêng tư trước public launch. |
+| ID | Quyết định | Đề xuất |
+|----|-----------|---------|
+| D-01 | Hosting dài hạn: Vercel Hobby (tạm) rồi chuyển, hay chọn host cho phép thương mại ngay từ đầu (Cloudflare Pages/Netlify)? | Bắt đầu trên host cho phép thương mại nếu chi phí migrate thấp; nếu không, ghi rõ mốc chuyển trước khi bật thu tiền |
+| D-02 | KPI tháng 1 và tháng 3 ở mục 6 có chấp nhận làm mục tiêu không? | Chấp nhận làm giả định, điều chỉnh sau thử nghiệm kín |
+| D-03 | Thứ tự ưu tiên nguồn thu | Donate, rồi affiliate, rồi đối tác; quảng cáo để cuối |
+| D-04 | Nhóm chính của MVP | Nhóm bạn 20–35 tuổi |

@@ -1,274 +1,261 @@
 # Tripmate — Đặc tả thuật toán chia tiền và tối giản nợ
 
-**Mục đích:** Định nghĩa cách chia expense bằng VND integer, tính số dư và tạo danh sách chuyển khoản tối giản, có thể giải thích và kiểm thử.
+- **Mục đích:** Định nghĩa chính xác cách chia một khoản chi, làm tròn, tính số dư, tối giản số giao dịch và tạo nội dung VietQR, để code và test không còn chỗ hiểu mơ hồ.
+- **Phiên bản:** 0.1
+- **Cập nhật lần cuối:** 18/11/2026
 
-**Phiên bản:** 0.1
+## Tóm tắt
 
-**Cập nhật lần cuối:** 2026-11-17
+Mọi phép tính dùng **số nguyên VND**. Một khoản chi được chia theo 4 kiểu (đều, số tiền, %, phần). Phần dư khi chia lẻ được phân bổ từng 1₫ theo phương pháp "phần dư lớn nhất" (largest remainder), hòa thì xoay vòng theo số thứ tự khoản chi để không ai luôn bị thiệt. Số dư mỗi người tính từ dữ liệu gốc. Tối giản nợ dùng heuristic tham lam kèm bước ghép cặp khớp chính xác; bài toán tối ưu tuyệt đối là NP-hard nhưng với nhóm nhỏ, heuristic cho kết quả tối đa n−1 giao dịch và thường tối ưu. Các test case dưới đây **đã được chạy thử bằng một bản cài đặt tham chiếu** (Python) để xác nhận số liệu; bản TypeScript trong dự án phải cho đúng kết quả này.
 
-**Tóm tắt:** Mọi calculation dùng số nguyên VND. Expense trước hết được phân bổ thành share của participant; balance của member là tổng đã trả trừ tổng share phải chịu. Settlement dùng heuristic tham lam ghép debtor lớn nhất với creditor lớn nhất, deterministic theo member id khi hòa. Heuristic không đảm bảo số transfer tối ưu tuyệt đối trong mọi trường hợp, nhưng đủ tốt, dễ giải thích và phù hợp nhóm nhỏ của MVP.
+---
 
-## 1. Mô hình dữ liệu tính toán
+## 1. Các kiểu chia
 
-Với mỗi member `i`:
+Ký hiệu: `amount` là tổng khoản chi (số nguyên, 1 ≤ amount ≤ 1.000.000.000), `P` là danh sách người tham gia được sắp xếp theo thứ tự cố định (xem 2.2), `n = |P|`.
 
-```text
-paid[i] = tổng amount_vnd của expense active do i trả
-owed[i] = tổng share_amount_vnd của expense active mà i tham gia
-balance[i] = paid[i] - owed[i]
+| Kiểu | Đầu vào của người dùng | Quy tắc | Điều kiện hợp lệ |
+|------|------------------------|---------|------------------|
+| `equal` (đều) | Chọn ai tham gia | Mỗi người trọng số 1 | n ≥ 1 |
+| `amount` (theo số tiền) | Số tiền cho từng người | Dùng đúng số nhập | Σ số tiền = `amount`; mỗi số ≥ 0 |
+| `percent` (theo %) | % cho từng người, độ chính xác 0,01% | Lưu dạng điểm cơ bản `bp` (33,33% = 3333) | Σ bp = 10000 |
+| `shares` (theo phần) | Số phần nguyên dương | Trọng số = số phần | Mỗi phần ≥ 1 |
+
+`equal`, `percent` và `shares` đều là trường hợp của **chia theo trọng số** (`equal` là mọi trọng số bằng 1). Chỉ `amount` là nhập trực tiếp.
+
+---
+
+## 2. Làm tròn và phân bổ phần dư
+
+### 2.1 Thuật toán chia theo trọng số (largest remainder)
+
+Đầu vào: `amount`, trọng số `w[0..n-1]` (số nguyên dương), `seq_no` (số thứ tự khoản chi trong chuyến, bắt đầu từ 1).
+
+1. `W = Σ w[i]`.
+2. Với mỗi i: `floor[i] = ⌊ amount × w[i] / W ⌋`, `frac[i] = (amount × w[i]) mod W` (phần dư dạng số nguyên, không dùng số thực).
+3. `r = amount − Σ floor[i]` (số đồng còn thiếu, `0 ≤ r < n`).
+4. Sắp xếp các chỉ số i theo: `frac[i]` giảm dần; nếu bằng nhau thì theo **khoảng cách xoay vòng** `(i − start) mod n` tăng dần, với `start = (seq_no − 1) mod n`.
+5. Cộng 1₫ cho `r` người đầu tiên theo thứ tự đó.
+6. Kết quả `owed[i] = floor[i] (+1)`; luôn thỏa `Σ owed[i] = amount`.
+
+**Vì sao xoay vòng:** nếu luôn cộng 1₫ cho người đầu danh sách, người đó thiệt thòi mãi qua nhiều khoản. Xoay theo `seq_no` làm phần dư phân tán đều theo thời gian mà vẫn xác định (cùng đầu vào cho cùng kết quả, dễ test).
+
+**Giới hạn số học:** `amount × w` tối đa khoảng 1e9 × 1e4 = 1e13, an toàn trong số nguyên của JavaScript (2^53 ≈ 9e15). `percent` dùng tối đa 10000, `shares` nên giới hạn mỗi phần ≤ 1000.
+
+### 2.2 Thứ tự người tham gia `P`
+
+Sắp xếp theo `trip_members.created_at` tăng dần, hòa thì theo `id`. Thứ tự này ổn định, không phụ thuộc người nhập.
+
+### 2.3 Kiểu `amount`
+
+Không làm tròn. Nếu Σ ≠ `amount`, từ chối và hiển thị "Còn thiếu X₫" hoặc "Dư X₫".
+
+---
+
+## 3. Tính số dư mỗi thành viên
+
+Với mỗi thành viên m trong chuyến:
+
+```
+paid[m]     = Σ amount của các khoản chi chưa xóa mà m là người trả
+owed[m]     = Σ owed_amount của các dòng chia chưa xóa thuộc m
+sent[m]     = Σ amount các thanh toán đã xác nhận mà m là người chuyển
+received[m] = Σ amount các thanh toán đã xác nhận mà m là người nhận
+net[m]      = paid[m] − owed[m] + sent[m] − received[m]
 ```
 
-- `balance[i] > 0`: member sẽ nhận tiền.
-- `balance[i] < 0`: member cần trả `abs(balance[i])`.
-- `balance[i] = 0`: không có nghĩa vụ ròng.
-- Invariant: `Σ balance[i] = 0` sau khi mọi expense được phân bổ chính xác.
+- `net > 0`: được nhận tiền (chủ nợ). `net < 0`: cần trả (con nợ).
+- **Bất biến:** `Σ net[m] = 0` với mọi trạng thái hợp lệ. Mọi test phải kiểm bất biến này.
+- Thành viên đã rời nhóm/bị xóa vẫn có `net` và vẫn tham gia gợi ý quyết toán (EC-01).
+- Hiển thị: thanh toán ở trạng thái "đã đánh dấu, chờ xác nhận" có thể được cộng vào để gợi ý không đòi trả hai lần, nhưng gắn nhãn "chờ xác nhận" (xem Quyết định D-34).
 
-Không tính expense `voided`, member inactive vẫn giữ trong lịch sử nhưng settlement mới phải chốt rule remap trước khi tính.
+---
 
-## 2. Các kiểu chia tiền
+## 4. Tối giản số giao dịch
 
-### 2.1 Chia đều — `equal`
+### 4.1 Bài toán
 
-Input: `amount`, danh sách `n` participant.
+Cho `net[m]` có tổng 0. Tìm tập giao dịch (người nợ → chủ nợ, số tiền) ít nhất sao cho sau khi thực hiện mọi `net` bằng 0.
 
-```text
-base = floor(amount / n)
-remainder = amount mod n
-share[j] = base + 1 nếu participant ở vị trí j < remainder, ngược lại base
+### 4.2 Giới hạn lý thuyết
+
+- Với n thành viên có `net ≠ 0`, luôn tồn tại lời giải tối đa **n − 1** giao dịch.
+- Số giao dịch tối thiểu bằng `n − k`, với k là **số nhóm con "tổng bằng 0" tối đa** có thể chia các số dư thành. Mỗi nhóm k phần tử cần đúng k − 1 giao dịch.
+- Tìm cách chia thành nhiều nhóm tổng-0 nhất liên quan đến bài toán tổng tập con (subset-sum), nên **tối ưu chính xác là NP-hard** trong trường hợp tổng quát.
+
+### 4.3 Vì sao heuristic là đủ cho MVP
+
+- Nhóm bạn đi chơi nhỏ (thường 3–10 người, tối đa 30): chênh lệch giữa heuristic và tối ưu thường là 0–1 giao dịch.
+- Người dùng cần kết quả **ổn định, dễ giải thích và tức thì**, không cần tối ưu tuyệt đối.
+- Heuristic đảm bảo cận trên n − 1, chạy O(n log n).
+- Có thể thêm tối ưu chính xác cho n nhỏ ở bản sau (xem 4.5) mà không đổi giao diện.
+
+### 4.4 Thuật toán MVP
+
+**Bước H1 — ghép cặp khớp chính xác:** lặp: nếu có chủ nợ c và con nợ d với `net[c] = −net[d]`, tạo giao dịch d → c và loại cả hai. Lặp đến khi không còn cặp khớp.
+
+**Bước H2 — tham lam:** khi còn số dư khác 0: lấy chủ nợ có `net` lớn nhất và con nợ có `|net|` lớn nhất (hòa thì theo thứ tự `P`); chuyển `t = min(net[c], −net[d])` từ d sang c; cập nhật; loại người có `net` về 0.
+
+```ts
+type Transfer = { from: string; to: string; amount: number };
+
+function simplify(net: Map<string, number>, order: string[]): Transfer[] {
+  const bal = new Map([...net].filter(([, v]) => v !== 0));
+  const out: Transfer[] = [];
+
+  // H1: ghép cặp khớp chính xác
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const c of order) {
+      if (!(bal.get(c)! > 0)) continue;
+      const d = order.find(
+        (x) => x !== c && bal.has(x) && bal.get(x)! === -bal.get(c)!
+      );
+      if (d) {
+        out.push({ from: d, to: c, amount: bal.get(c)! });
+        bal.delete(c);
+        bal.delete(d);
+        changed = true;
+      }
+    }
+  }
+
+  // H2: tham lam
+  while (bal.size > 0) {
+    const c = pickMax([...bal].filter(([, v]) => v > 0), order);   // chủ nợ lớn nhất
+    const d = pickMax([...bal].filter(([, v]) => v < 0).map(([k, v]) => [k, -v] as [string, number]), order);
+    const t = Math.min(bal.get(c)!, -bal.get(d)!);
+    out.push({ from: d, to: c, amount: t });
+    bal.set(c, bal.get(c)! - t);
+    bal.set(d, bal.get(d)! + t);
+    if (bal.get(c) === 0) bal.delete(c);
+    if (bal.get(d) === 0) bal.delete(d);
+  }
+  return out;
+}
+// pickMax: chọn phần tử có giá trị lớn nhất, hòa thì theo vị trí trong `order`.
 ```
 
-Thứ tự participant phải ổn định: `position` được chọn lúc user submit; nếu không có thì sort theo `member_id` tăng dần. Không dùng thứ tự response database ngẫu nhiên.
+Độ phức tạp: H2 là O(n log n) nếu dùng hai heap, O(n²) nếu quét tuyến tính (n ≤ 30 nên chấp nhận được). H1 là O(n²) bản đơn giản, O(n) nếu dùng bảng băm theo số tiền.
 
-### 2.2 Theo số tiền — `exact`
+### 4.5 Cải tiến sau MVP (không bắt buộc)
 
-Input: từng participant có `amount` integer.
+Khi số người có `net ≠ 0` nhỏ (ví dụ n ≤ 12), chạy quy hoạch động trên tập con (bitmask) để tìm số nhóm tổng-0 tối đa, độ phức tạp khoảng O(2^n · n). Cho kết quả tối ưu chính xác cho nhóm nhỏ. Test TC-12 minh họa trường hợp tham lam thuần túy kém hơn tối ưu 1 giao dịch.
 
-Điều kiện:
+---
 
-```text
-∀ share >= 0
-Σ share = amount
+## 5. Test case
+
+Ký hiệu thành viên theo thứ tự tham gia: A, B, C, D... Tất cả số liệu dưới đây đã được chạy bằng bản cài đặt tham chiếu. `seq` là `seq_no` của khoản chi.
+
+### 5.1 Chia một khoản chi
+
+| ID | Mô tả | Đầu vào | Kết quả mong đợi |
+|----|-------|---------|------------------|
+| TC-01 | Chia đều lẻ 1₫ | 100.000₫, đều, [A,B,C], seq=1 | A 33.334; B 33.333; C 33.333 |
+| TC-02 | Xoay vòng phần dư | 100.000₫, đều, [A,B,C], seq=2 | A 33.333; B 33.334; C 33.333 |
+| TC-03 | Chia đều chẵn | 50.000₫, đều, [A,B] | 25.000; 25.000 |
+| TC-04 | Số tiền nhỏ hơn số người | 2₫, đều, [A,B,C], seq=1 | A 1; B 1; C 0 (hợp lệ vì `owed_amount ≥ 0`) |
+| TC-05 | Theo số tiền, hợp lệ | 300.000₫: A 100.000, B 120.000, C 80.000 | Chấp nhận |
+| TC-05b | Theo số tiền, sai tổng | 100.000 + 120.000 + 70.000 = 290.000 so với 300.000 | Từ chối: "Còn thiếu 10.000₫" |
+| TC-06 | Theo %, chia chẵn | 1.000.000₫, bp 3333/3333/3334 | 333.300; 333.300; 333.400 |
+| TC-07 | Theo %, có phần dư | 100.001₫, bp 5000/5000, seq=1 | A 50.001; B 50.000 |
+| TC-08 | Theo phần, chia chẵn | 900.000₫, phần 1/2/3 | 150.000; 300.000; 450.000 |
+| TC-09 | Theo phần, có phần dư | 100.000₫, phần 2/1 | 66.667; 33.333 (phần dư dạng số nguyên: 2 so với 1, người thứ nhất lớn hơn) |
+
+### 5.2 Số dư và tối giản nợ
+
+| ID | Kịch bản | Số dư | Giao dịch mong đợi |
+|----|---------|-------|--------------------|
+| TC-10 | A trả 100.000₫ chia đều [A,B,C], seq=1 (TC-01) | A +66.666; B −33.333; C −33.333 | B → A 33.333; C → A 33.333 |
+| TC-11 | Chuỗi: A trả 300.000₫ đều [A,B,C]; B trả 150.000₫ đều [B,C] | A +200.000; B −25.000; C −175.000 | C → A 175.000; B → A 25.000 (2 giao dịch) |
+| TC-12 | Vòng tròn triệt tiêu: B trả 100.000₫ cho A; C trả 100.000₫ cho B; A trả 100.000₫ cho C | A 0; B 0; C 0 | Không có giao dịch |
+| TC-13 | Heuristic thuần tham lam kém hơn tối ưu: C1 +400.000, C2 +300.000, C3 +300.000, D1 −600.000, D2 −400.000 | — | Chỉ tham lam: 4 giao dịch. Có bước H1: D2 → C1 400.000; D1 → C2 300.000; D1 → C3 300.000 (3 giao dịch, tối ưu) |
+| TC-14 | Người trả không tham gia: A trả 90.000₫ cho [B,C] | A +90.000; B −45.000; C −45.000 | B → A 45.000; C → A 45.000 |
+| TC-15 | Chưa có khoản chi, hoặc chuyến chỉ có 1 người | Mọi số dư 0 | Không có giao dịch; hiển thị "Chưa có gì để quyết toán" |
+| TC-16 | Thanh toán một phần: từ TC-10, B đã chuyển và A xác nhận 20.000₫ | A +46.666; B −13.333; C −33.333 | C → A 33.333; B → A 13.333 |
+| TC-17 | Sửa khoản chi sau thanh toán: từ TC-10, B đã xác nhận trả 33.333₫; owner mở khóa, sửa tổng thành 90.000₫ (đều, 30.000 mỗi người) | A +26.667; B +3.333; C −30.000 | C → A 26.667; C → B 3.333 (B trả dư nên thành chủ nợ, EC-09) |
+| TC-18 | Thành viên đã rời nhóm còn nợ | C đã `left`, `net` = −85.000, A +85.000 | C → A 85.000 vẫn xuất hiện trong gợi ý (EC-01) |
+
+### 5.3 Test thuộc tính (property-based)
+
+| ID | Thuộc tính | Cách kiểm |
+|----|-----------|-----------|
+| PT-01 | Với mọi `amount`, trọng số, `seq`: `Σ owed = amount` và mọi `owed ≥ 0` | Sinh ngẫu nhiên 10.000 trường hợp |
+| PT-02 | Với mọi tập khoản chi/thanh toán hợp lệ: `Σ net = 0` | Sinh ngẫu nhiên |
+| PT-03 | Thực hiện toàn bộ giao dịch gợi ý đưa mọi `net` về 0 | Áp dụng giao dịch lên `net` |
+| PT-04 | Số giao dịch ≤ (số người có `net ≠ 0`) − 1 | So sánh |
+| PT-05 | Thuật toán xác định: cùng đầu vào cho cùng đầu ra | Chạy hai lần |
+| PT-06 | Hai phép cài đặt (client TypeScript và hàm SQL `get_trip_balances`) cho cùng `net` | So sánh trên dữ liệu seed |
+
+---
+
+## 6. Tạo nội dung VietQR
+
+### 6.1 Cơ sở
+
+VietQR là mã QR chuyển khoản liên ngân hàng của NAPAS, tuân thủ chuẩn thanh toán QR của EMVCo và bộ tiêu chuẩn cơ sở do Ngân hàng Nhà nước ban hành. Nội dung QR là chuỗi gồm các trường dạng TLV: **ID (2 ký tự) + độ dài (2 chữ số) + giá trị**. Có hai cách tạo QR:
+
+1. **Tự tạo chuỗi EMVCo ở client** (đề xuất): không gửi số tiền/tài khoản cho bên thứ ba, chạy được offline.
+2. Dùng dịch vụ tạo ảnh của bên thứ ba (ví dụ dịch vụ `quicklink` của vietqr.io): đơn giản hơn nhưng phụ thuộc dịch vụ ngoài và lộ dữ liệu thanh toán cho họ.
+
+### 6.2 Các trường cần có
+
+| ID | Trường | Giá trị trong Tripmate | Ghi chú |
+|----|--------|------------------------|---------|
+| 00 | Payload Format Indicator | `01` | Cố định |
+| 01 | Point of Initiation Method | `12` (QR động, có số tiền) | `11` là QR tĩnh |
+| 38 | Merchant Account Information (NAPAS) | Gồm các trường con bên dưới | |
+| 38.00 | GUID | `A000000727` | Định danh NAPAS |
+| 38.01 | Beneficiary Organization | Gồm: `00` = mã BIN ngân hàng nhận (6 chữ số), `01` = số tài khoản | |
+| 38.02 | Service code | `QRIBFTTA` (chuyển đến tài khoản) | Chuyển đến thẻ dùng `QRIBFTTC` |
+| 53 | Transaction Currency | `704` (VND) | |
+| 54 | Transaction Amount | Số tiền nguyên, ví dụ `33333` | Không có dấu phân cách, không số thập phân |
+| 58 | Country Code | `VN` | |
+| 62 | Additional Data | Chứa `08` = nội dung chuyển khoản | Trường con 08 là mục đích giao dịch/nội dung |
+| 63 | CRC | 4 ký tự hex in hoa | CRC-16/CCITT-FALSE (đa thức 0x1021, giá trị đầu 0xFFFF) tính trên toàn bộ chuỗi, **gồm cả phần `6304`** |
+
+### 6.3 Ví dụ (dữ liệu giả)
+
+Người nhận: BIN `970436`, số tài khoản `0011001234567`, số tiền 33.333₫, nội dung `TRIPMATE DALAT`.
+
+```
+00020101021238570010A00000072701270006970436011300110012345670208QRIBFTTA53037045405333335802VN62180814TRIPMATE DALAT6304BED3
 ```
 
-Nếu tổng thiếu/thừa, reject và hiển thị chênh lệch; không tự sửa silently.
+Chuỗi trên được tạo bằng bản cài đặt tham chiếu; bộ tính CRC đã được đối chiếu với giá trị kiểm chuẩn của CRC-16/CCITT-FALSE (`123456789` cho `29B1`). **Chưa được quét thử bằng app ngân hàng thật**, nên đây là việc bắt buộc ở Phase 2.
 
-### 2.3 Theo phần trăm — `percentage`
+### 6.4 Nội dung chuyển khoản
 
-Lưu input theo basis points để tránh float: `10000 = 100.00%`.
+| Quy tắc | Chi tiết |
+|---------|----------|
+| Định dạng | `TM <mã ngắn chuyến> <tên người trả không dấu>`; ví dụ `TM DL12 DUC` |
+| Ký tự | Chỉ chữ cái không dấu, số và khoảng trắng; viết hoa |
+| Độ dài | Khuyến nghị tối đa khoảng 25 ký tự để tương thích nhiều ngân hàng (cần kiểm thử, giới hạn thực tế tùy app) |
+| Chống sai | Luôn hiển thị song song số tài khoản dạng văn bản có nút sao chép |
 
-```text
-Σ percentage_basis_points = 10000
-raw_share = amount * basis_points / 10000
-```
+### 6.5 Danh mục ngân hàng
 
-`raw_share` được floor trước, phần dư phân bổ theo largest remainder; tie-break bằng participant order ổn định.
+Cần bảng ánh xạ tên ngân hàng và mã BIN 6 chữ số (ví dụ Vietcombank `970436`). Lưu thành tệp `banks.json` trong dự án, cập nhật thủ công định kỳ và kiểm chứng với nguồn chính thức của NAPAS/ngân hàng trước khi dùng. Một số ví dụ thư viện mẫu trên mạng ghi sai mã BIN, nên không sao chép mà không đối chiếu.
 
-### 2.4 Theo phần — `shares`
-
-Input `shares[j]` là số nguyên dương.
-
-```text
-total_shares = Σ shares[j]
-raw_share = amount * shares[j] / total_shares
-```
-
-Floor + remainder theo fractional remainder lớn nhất; tie-break theo participant order. `shares=0` có thể bỏ khỏi participant list, không phải participant có nghĩa vụ.
-
-## 3. Quy tắc làm tròn và phân bổ phần dư
-
-| ID | Quy tắc |
-|---|---|
-| ROUND-01 | Tiền chỉ là integer VND; không dùng binary floating point. |
-| ROUND-02 | Mọi share sau split phải là số nguyên ≥0. |
-| ROUND-03 | Tổng shares luôn đúng bằng expense amount; assert trước khi save. |
-| ROUND-04 | Equal split: phần dư 1₫ lần lượt cấp cho participant đứng trước trong stable order. |
-| ROUND-05 | Percentage/shares: floor tất cả trước, phần dư cấp cho fractional remainder lớn nhất; tie-break stable order. |
-| ROUND-06 | Stable order phải được lưu hoặc tái tạo từ `position`/`member_id`, không phụ thuộc UI locale. |
-| ROUND-07 | UI hiển thị theo locale chỉ là formatting; value gốc vẫn integer. |
-| ROUND-08 | Nếu calculation invariant thất bại, transaction reject; không tạo expense với số dư lệch. |
-
-## 4. Tính balance
-
-```text
-function calculateBalances(expenses, members):
-    paid = map(memberId -> 0)
-    owed = map(memberId -> 0)
-
-    for expense in expenses where expense.status == 'active':
-        paid[expense.payerMemberId] += expense.amountVnd
-        shares = allocate(expense.amountVnd, expense.splitMethod,
-                          expense.participants)
-        for share in shares:
-            owed[share.memberId] += share.amountVnd
-
-    balances = []
-    for member in members:
-        balances.push({
-            memberId: member.id,
-            paidVnd: paid[member.id],
-            owedVnd: owed[member.id],
-            balanceVnd: paid[member.id] - owed[member.id]
-        })
-
-    assert sum(b.balanceVnd for b in balances) == 0
-    return balances
-```
-
-Ví dụ: A trả 900000 cho A/B/C, mỗi người chịu 300000; A balance `+600000`, B/C mỗi người `-300000`.
-
-## 5. Thuật toán tối giản transfer
-
-### 5.1 Chuẩn hóa
-
-- Debtor list: các `balance < 0`, amount cần trả `abs(balance)`.
-- Creditor list: các `balance > 0`, amount cần nhận `balance`.
-- Loại balance zero.
-- Sort amount giảm dần; tie-break bằng `member_id` tăng dần để kết quả deterministic.
-
-### 5.2 Pseudocode greedy
-
-```text
-function minimizeTransfers(balances):
-    debtors = sortDesc([
-        { memberId, amount: abs(balanceVnd) }
-        for b in balances if b.balanceVnd < 0
-    ])
-    creditors = sortDesc([
-        { memberId, amount: balanceVnd }
-        for b in balances if b.balanceVnd > 0
-    ])
-
-    transfers = []
-    i = 0
-    j = 0
-
-    while i < debtors.length and j < creditors.length:
-        amount = min(debtors[i].amount, creditors[j].amount)
-        transfers.push({
-            debtorMemberId: debtors[i].memberId,
-            creditorMemberId: creditors[j].memberId,
-            amountVnd: amount,
-            status: 'pending'
-        })
-
-        debtors[i].amount -= amount
-        creditors[j].amount -= amount
-
-        if debtors[i].amount == 0: i += 1
-        if creditors[j].amount == 0: j += 1
-
-    assert all(x.amount == 0 for x in debtors)
-    assert all(x.amount == 0 for x in creditors)
-    return transfers
-```
-
-### 5.3 Độ phức tạp và giới hạn
-
-- Sort: `O(n log n)` với `n` là số debtor/creditor; vòng lặp: `O(n)`.
-- Bộ nhớ: `O(n)`.
-- Bài toán tìm số transfer tối thiểu tuyệt đối với các ràng buộc bổ sung có thể trở thành bài toán tối ưu tổ hợp/NP-hard; thử mọi cách ghép để chứng minh tối ưu sẽ không đáng cho nhóm 3–10 người.
-- Greedy có ưu điểm: deterministic, dễ giải thích, luôn bảo toàn tổng tiền và thường đạt số transfer thấp.
-- Giới hạn: có thể không đạt số cạnh ít nhất trong một số vector balance; nếu cần, có thể thêm exact search cho `n≤10` như mode sau MVP và fallback greedy khi lớn hơn.
-
-## 6. VietQR và nội dung chuyển khoản
-
-### 6.1 Dữ liệu cần có
-
-| Field | Bắt buộc | Quy tắc |
-|---|---|---|
-| `bankBin` | Có nếu render QR | Mã BIN theo danh mục cập nhật; không nhận tên tự do để build QR. |
-| `accountNumber` | Có | Validate format/length theo provider; encrypt at rest, mask UI. |
-| `accountName` | Có | Chuẩn hóa theo provider nếu cần; hiển thị masked khi không cần. |
-| `amountVnd` | Có | Integer >0, lấy từ transfer snapshot, không cho sửa trên QR screen. |
-| `addInfo` | Có | Deterministic, ngắn, không chứa secret; ví dụ `TRIPMATE TM123 ABC`. |
-| `currency` | Có | `704` (VND) trong QR payload. |
-| `country` | Có | `VN`. |
-
-### 6.2 Payload
-
-MVP nên dùng thư viện/provider đã kiểm thử chuẩn EMVCo/VietQR thay vì tự nối chuỗi không test. Nếu tự build, payload TLV thường gồm:
-
-| Tag | Ý nghĩa |
-|---|---|
-| `00` | Payload format indicator `01`. |
-| `01` | Point of initiation method: dynamic/static theo provider. |
-| `38` | Merchant account information: GUID VietQR, bank BIN, account number, service. |
-| `52` | Merchant category code, thường `0000` nếu provider yêu cầu. |
-| `53` | Transaction currency `704`. |
-| `54` | Transaction amount, integer decimal string. |
-| `58` | Country code `VN`. |
-| `59` | Account/merchant name nếu chuẩn cho phép. |
-| `60` | City nếu cần. |
-| `62` | Additional data, đặc biệt field `08` cho addInfo. |
-| `63` | CRC-16/CCITT-FALSE của payload trước tag CRC. |
-
-`addInfo` không được chứa account number đầy đủ, access token hoặc nội dung riêng tư. QR screen phải ghi rõ Tripmate không biết giao dịch đã thành công.
-
-### 6.3 Transfer message fallback
-
-```text
-Chuyển khoản Tripmate: {tripShortCode} - {debtorDisplayName}
-Số tiền: {amountVnd}₫
-Nội dung: {addInfo}
-Người nhận: {maskedAccountName}
-Ngân hàng: {bankName}
-```
-
-Nếu thiếu profile, vẫn cho copy `addInfo + amount + recipient display name` và hướng dẫn hỏi recipient, không tạo QR giả.
-
-## 7. Test cases tối thiểu
-
-| ID | Input | Kết quả mong đợi |
-|---|---|---|
-| ALG-01 | Expense 900000, equal A/B/C | A/B/C mỗi người 300000; payer A balance +600000, B/C -300000. |
-| ALG-02 | 100000 equal A/B/C | Stable order nhận 33334, hai người còn lại 33333; tổng 100000. |
-| ALG-03 | 100000 exact: A 20000, B 30000, C 50000 | Save thành công; tổng exact 100000. |
-| ALG-04 | 100000 exact: 20000 + 30000 + 40000 | Reject; báo thiếu 10000. |
-| ALG-05 | 100000 percentage: A 50%, B 25%, C 25% | Shares 50000/25000/25000. |
-| ALG-06 | 100000 percentage với basis points lẻ | Kết quả integer cộng đúng 100000; remainder theo largest remainder/tie-break. |
-| ALG-07 | 100000 shares A=1,B=2 | Shares 33333/66667; tổng đúng 100000. |
-| ALG-08 | 100000 shares A=0,B=0 | Reject vì không có participant có shares >0. |
-| ALG-09 | A balance -100000, B +60000, C +40000 | A→B 60000 và A→C 40000; 2 transfers. |
-| ALG-10 | A -70000, B -30000, C +50000, D +50000 | A→C 50000, A→D 20000, B→D 30000; 3 transfers. |
-| ALG-11 | A 0, B 0, C 0 | Không tạo transfer; settlement no-op/completed theo UI. |
-| ALG-12 | Expense voided 300000 và active 100000 | Chỉ active expense ảnh hưởng balance. |
-| ALG-13 | Expense 100000 payer A, participant B only | A balance +100000, B -100000; payer không bắt buộc là participant. |
-| ALG-14 | Balance tổng do input lỗi là +1 | Assert fail; không tạo settlement, yêu cầu recalculate source shares. |
-| ALG-15 | Transfer marked paid rồi expense đổi participant | Settlement revision mới; transfer cũ needs_review/disputed. |
-| ALG-16 | QR thiếu bankBin | Không render QR; cho copy fallback và hướng dẫn recipient cập nhật profile. |
-
-## 8. Kiểm tra bất biến
-
-```text
-for each expense:
-    sum(participant.share_amount_vnd) == expense.amount_vnd
-    every share_amount_vnd >= 0
-
-for each settlement:
-    sum(balance_vnd) == 0
-    sum(transfer.amount_vnd by debtor) == abs(debtor.balance_vnd)
-    sum(transfer.amount_vnd by creditor) == creditor.balance_vnd
-    debtor_member_id != creditor_member_id
-```
-
-Nếu invariant fail, không hiển thị settlement như kết quả hợp lệ; hiển thị lỗi có correlation id và giữ dữ liệu nguồn để debug.
+---
 
 ## Câu hỏi mở
 
-1. Có cần exact optimization cho nhóm ≤10 người sau MVP, hay greedy là contract lâu dài?
-2. Remainder equal split phân bổ theo thứ tự participant user chọn hay theo member id để ổn định giữa các lần chỉnh sửa?
-3. Có cần cho payer không tham gia expense, như người đặt hộ, là rule chính thức trong UI không?
-4. VietQR dùng static payload hay dynamic payload; provider nào chịu trách nhiệm cập nhật danh sách bank BIN?
-5. Độ dài tối đa của `addInfo` theo ngân hàng mục tiêu là bao nhiêu; có cần fallback rút gọn tự động không?
-6. Khi recipient đổi bank profile sau settlement snapshot, QR cũ còn hợp lệ hay phải invalidate?
+1. Thứ tự người tham gia `P` theo thời điểm tham gia có hợp lý, hay nên theo thứ tự người dùng chọn khi nhập khoản chi?
+2. Có cho người dùng chọn "người nhận phần dư 1₫" thủ công không (hiếm dùng, nhưng có thể gây tranh cãi)?
+3. Giới hạn nội dung chuyển khoản thực tế của các ngân hàng phổ biến là bao nhiêu ký tự? Cần thử.
+4. Có cần làm tối ưu chính xác (bitmask, 4.5) ngay MVP khi nhóm ≤ 12 người?
+5. Với QR đến **thẻ** (`QRIBFTTC`), có hỗ trợ không? Đề xuất không ở MVP.
+6. QR có số tiền cố định: người chuyển có thể sửa số tiền trong app ngân hàng hay không tùy ngân hàng; có cần cảnh báo?
 
 ## Quyết định cần chốt
 
-| Mã | Quyết định | Đề xuất mặc định |
-|---|---|---|
-| DEC-ALG-01 | Arithmetic | Integer VND, không float; percentage lưu basis points. |
-| DEC-ALG-02 | Remainder | Equal theo stable participant order; percentage/shares theo largest remainder rồi stable order. |
-| DEC-ALG-03 | Settlement | Greedy deterministic cho MVP; exact solver chỉ cân nhắc sau khi có dữ liệu cần thiết. |
-| DEC-ALG-04 | Payer | Payer không bắt buộc là participant; UI phải nói rõ. |
-| DEC-ALG-05 | QR | Dùng thư viện/provider đã kiểm thử; fallback copy là bắt buộc. |
-| DEC-ALG-06 | Bank update | QR lấy payment profile hiện tại nhưng gắn với settlement transfer; profile thay đổi phải tạo warning/re-render. |
+| ID | Quyết định | Đề xuất |
+|----|-----------|---------|
+| D-32 | Quy tắc làm tròn | Largest remainder, hòa thì xoay vòng theo `seq_no` (mục 2.1) |
+| D-33 | Heuristic MVP | H1 + H2 (mục 4.4); tối ưu bitmask để sau |
+| D-34 | Gợi ý quyết toán có tính khoản "chờ xác nhận" không | Có, kèm nhãn "chờ xác nhận"; số dư trong DB vẫn chỉ tính khoản đã xác nhận |
+| D-35 | Tạo VietQR ở client | Có (trùng D-21) |
+| D-36 | Định dạng nội dung chuyển khoản | `TM <mã chuyến> <tên không dấu>`, tối đa khoảng 25 ký tự |

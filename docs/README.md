@@ -1,141 +1,156 @@
-# Tripmate — Documentation Index
+# Tripmate — Bộ tài liệu dự án
 
-**Mục đích:** Là mục lục và điểm vào duy nhất cho bộ tài liệu sản phẩm Tripmate; ghi rõ thứ tự đọc, quyết định nền và các mâu thuẫn cần xử lý trước khi code.
+- **Mục đích:** Mục lục, thứ tự đọc, tổng hợp "Câu hỏi mở" và kết quả rà soát chéo của toàn bộ tài liệu Tripmate.
+- **Phiên bản:** 0.1
+- **Cập nhật lần cuối:** 18/11/2026
 
-**Phiên bản:** 0.1
+## Tóm tắt
 
-**Cập nhật lần cuối:** 2026-11-17
+Bộ tài liệu gồm 10 tài liệu chính, một bảng thuật ngữ và README này. Chúng được viết **trước khi có code** và là bản nháp đầu tiên (v0.1) để bạn đọc, chỉnh và trả lời các câu hỏi mở. Trong lúc rà soát chéo đã phát hiện **7 điểm mâu thuẫn hoặc thiếu sót thật** giữa các tài liệu (mục 3), trong đó **3 điểm cần sửa trước khi viết code** (R-01, R-03, R-04).
 
-**Tóm tắt:** Bộ tài liệu đi từ vấn đề và persona đến PRD, backlog, UX, kiến trúc, database, thuật toán tiền, test và launch. Các tài liệu đã dùng một bộ thuật ngữ và ID chung; phần rà soát chéo bên dưới ghi các điểm còn phải chốt, đặc biệt anonymous recovery, payment profile và phạm vi offline.
+Số liệu thị trường và hạ tầng (giá Splitwise/Wanderlog/TripIt, giới hạn Supabase/Vercel) được tra cứu ngày 18/11/2026 từ các nguồn thứ cấp và **cần kiểm chứng lại** trên trang chính thức trước khi ra quyết định.
 
-## 1. Thứ tự đọc
+---
 
-| Bước | Tài liệu | Mục tiêu |
-|---:|---|---|
-| 1 | [01-product-brief.md](./01-product-brief.md) | Định vị, pain points, đối thủ, KPI, rủi ro và baseline requirements. |
-| 2 | [02-personas-and-journeys.md](./02-personas-and-journeys.md) | Hiểu người dùng, journey và critical moments. |
-| 3 | [03-prd.md](./03-prd.md) | Chốt phạm vi MVP, FR/NFR, acceptance criteria và edge cases. |
-| 4 | [04-user-stories-and-backlog.md](./04-user-stories-and-backlog.md) | Chia yêu cầu thành story, phase và vertical slice. |
-| 5 | [05-ux-and-screens.md](./05-ux-and-screens.md) | Điều hướng, màn hình, wireframe và UI copy. |
-| 6 | [06-architecture.md](./06-architecture.md) | Dịch vụ, runtime, auth, realtime, offline và vận hành. |
-| 7 | [07-database.md](./07-database.md) | ERD, schema, RLS, RPC và migration. |
-| 8 | [08-settlement-algorithm.md](./08-settlement-algorithm.md) | Split, rounding, balance, transfer và VietQR. |
-| 9 | [09-test-plan.md](./09-test-plan.md) | Test strategy, cases, device QA và release gate. |
-| 10 | [10-roadmap-and-launch.md](./10-roadmap-and-launch.md) | Lộ trình 8–10 tuần, pilot và launch. |
-| 11 | `README.md` + [glossary.md](./glossary.md) | Rà soát chéo, thuật ngữ và checklist chốt trước code. |
+## 1. Mục lục và thứ tự đọc
 
-## 2. Quyết định nền đang được dùng
+| # | Tài liệu | Nội dung | Đọc khi |
+|---|----------|----------|---------|
+| 1 | [01-product-brief.md](01-product-brief.md) | Vấn đề, đối thủ, giá trị, KPI, mô hình bền vững, rủi ro | Bắt đầu |
+| 2 | [02-personas-and-journeys.md](02-personas-and-journeys.md) | 3 persona, hành trình, khoảnh khắc quyết định | Sau 1 |
+| 3 | [03-prd.md](03-prd.md) | Yêu cầu FR/NFR, quy tắc nghiệp vụ, trường hợp biên, ma trận truy vết | Sau 2 |
+| 4 | [04-user-stories-and-backlog.md](04-user-stories-and-backlog.md) | User story, epic, phase, lát cắt mỏng nhất | Sau 3 |
+| 5 | [05-ux-and-screens.md](05-ux-and-screens.md) | Nguyên tắc UX, sitemap, màn hình, wireframe, design tokens, nội dung | Sau 3 |
+| 6 | [06-architecture.md](06-architecture.md) | Kiến trúc, xác thực, realtime, PWA, bảo mật, giới hạn free, CI/CD | Trước khi code |
+| 7 | [07-database.md](07-database.md) | ERD, bảng, RLS, RPC, migration | Trước khi code |
+| 8 | [08-settlement-algorithm.md](08-settlement-algorithm.md) | Chia tiền, làm tròn, tối giản nợ, 18 test case, VietQR | Trước khi code |
+| 9 | [09-test-plan.md](09-test-plan.md) | Chiến lược test, test case, QA thủ công, tiêu chí ra mắt | Song song với code |
+| 10 | [10-roadmap-and-launch.md](10-roadmap-and-launch.md) | Lộ trình tuần, rủi ro, thử nghiệm kín, ra mắt, sau MVP | Trước khi bắt đầu tuần 1 |
+| — | [glossary.md](glossary.md) | Bảng thuật ngữ dùng nhất quán | Tra cứu |
 
-| Chủ đề | Quyết định hiện tại | Nguồn |
-|---|---|---|
-| Primary segment | Nhóm bạn 3–10 người tại Việt Nam; nhóm đồng nghiệp là pilot phụ | Product Brief, PRD |
-| Auth | Anonymous Supabase Auth; Google upgrade là Should | Product Brief, Architecture |
-| Frontend/hosting | React + Vite + TypeScript trên Cloudflare Pages Free; Docker chỉ local/CI | Architecture, Roadmap |
-| Money | VND integer `bigint`, không decimal/float | PRD, Database, Algorithm |
-| Core flow | Create → join → poll → itinerary → expense → settlement | Personas, Backlog, UX |
-| Roles | `owner`, `member`, virtual member là trạng thái dữ liệu | PRD, Database |
-| Settlement | Greedy deterministic; QR không xác nhận giao dịch | Algorithm, Architecture |
-| Offline | Read cache + draft; chưa có offline write queue | Product Brief, Architecture |
-| Monetization | Không quảng cáo/affiliate trong MVP | Product Brief, Roadmap |
-| Timeline | 8 tuần build + 2 tuần closed pilot | Backlog, Roadmap |
+Sau tài liệu 7 và 8 bạn đã đủ ngữ cảnh để chuyển sang prompt viết code (`PROMPT.md`) và đưa các tài liệu này làm ngữ cảnh cho AI viết code.
 
-## 3. Rà soát chéo và đề xuất sửa
+**Quy ước:** ID `FR-xx` và `NFR-xx` (PRD), `US-xx` (user story), `S-xx` (màn hình), `TC-xx`/`PT-xx` (test thuật toán), `T-xx` (test kế hoạch), `EC-xx` (trường hợp biên), `BR-xx` (quy tắc nghiệp vụ), `D-xx` (quyết định), `RK-xx`/`RM-xx` (rủi ro).
 
-| ID | Mâu thuẫn/rủi ro | Tài liệu liên quan | Đề xuất sửa/chốt |
-|---|---|---|---|
-| X-01 | Product Brief nói Google upgrade là Should nhưng UX/Architecture cần recovery khi anonymous session mất; chưa có cơ chế chắc chắn. | 01, 02, 03, 06 | Giữ Google upgrade là Should cho core flow, nhưng coi recovery copy + session warning là Must trước pilot; export code chỉ là quyết định riêng. |
-| X-02 | PRD/UX nói owner có thể đóng settlement theo rule, còn Product Brief còn mở câu hỏi xác nhận người nhận. | 01, 03, 05 | Chốt mặc định: chỉ completed khi mọi transfer `confirmed_received`; thêm manual close với warning/audit nếu owner được cấp sau này. |
-| X-03 | Database `payment_profiles` chứa encrypted fields nhưng Architecture chưa chốt encryption key management. | 06, 07, 08 | MVP chỉ lưu profile nếu provider/Supabase encryption và secret management đủ; nếu chưa, nhập bank data mỗi lần tạo QR. Không code trước khi chốt. |
-| X-04 | PRD có `member_status=pending_merge` và virtual member, nhưng RLS policy mẫu dùng `user_id IS NULL` chưa bao phủ mọi merge case. | 03, 06, 07 | Tạo RPC `merge_virtual_member`, khóa transaction, test duplicate member/expense; không cho client update `user_id`. |
-| X-05 | UX cho phép share QR image nhưng privacy rules hạn chế lưu/chia sẻ bank data. | 05, 06, 09 | MVP ưu tiên show/copy; share/download QR chỉ bật sau privacy review và không lưu lâu dài. |
-| X-06 | PRD đặt FR-REAL-01 là Should nhưng backlog/quality muốn realtime/fallback sớm. | 03, 04, 06, 09 | Core flow không phụ thuộc realtime; refresh fallback là Must. Realtime scoped là Should nhưng nên ship trước pilot nếu quota ổn. |
-| X-07 | “Minimum transfers” có thể được hiểu là optimum tuyệt đối, trong khi Algorithm dùng greedy heuristic. | 01, 03, 08 | UI/copy dùng “tối giản theo heuristic”; tài liệu giải thích invariant và giới hạn; không tuyên bố optimum tuyệt đối. |
-| X-08 | `FR-EXP-03` yêu cầu percentage/shares Must nhưng vertical slice chỉ equal, dễ làm backlog hiểu là phải có ngay tuần 2. | 03, 04 | Ghi rõ Must của MVP, không Must của vertical slice; giữ exact/percentage/shares ở Phase 3. |
-| X-09 | `itinerary_days` có cả `day_date` và `day_index`, cần rule khi trip date được thêm sau. | 03, 07, 08 | MVP dùng day_index; nếu thêm date, migration explicit và không tự đổi item nếu chưa có mapping. |
-| X-10 | Product Brief nói 10–20 nhóm closed pilot, Roadmap nói 5–10 nhóm ở tuần 9 rồi 10–20 lũy kế. | 01, 10 | Đây không phải mâu thuẫn: tuần 9 pilot soft launch 5–10, tuần 10 đạt 10–20 lũy kế; ghi rõ trong launch checklist. |
-| X-11 | RLS sample cho `expenses` cho phép payer member update, nhưng PRD nói creator có thể sửa. | 03, 07 | Thêm `created_by_member_id` vào schema hoặc quyết định creator = payer; đề xuất thêm cột creator để đúng journey. |
-| X-12 | `auth.users` xuất hiện trong ERD nhưng không phải bảng app migration. | 06, 07 | Ghi chú đây là Supabase managed table; migration chỉ tạo FK tham chiếu/không alter trực tiếp ngoài policy cần thiết. |
-| X-13 | Product Brief/architecture cũ dùng Next.js/Vercel, trong khi phương án triển khai mới dùng React/Vite/Cloudflare Pages. | 01, 03, 04, 06, 10 | Đã cập nhật stack mới; Next.js chỉ còn là phương án thay thế nếu sau này cần SSR/Workers runtime. |
+---
 
-### Các sửa cần thực hiện trước khi viết code
+## 2. Câu hỏi mở gộp từ tất cả các bước
 
-1. Chốt settlement close rule và payment profile strategy.
-2. Bổ sung `created_by_member_id` vào `expenses` hoặc sửa policy/PRD cho thống nhất.
-3. Viết data retention/recovery policy cho anonymous identity.
-4. Xác nhận VietQR provider/library và bank BIN source.
-5. Cập nhật schema/API contract sau các quyết định trên; coi tài liệu hiện tại là v0.1.
+Nhóm theo chủ đề. Cột "Nguồn" là tài liệu và số thứ tự câu hỏi trong tài liệu đó. Ưu tiên: **A** = cần trả lời trước khi code, **B** = trước khi ra mắt, **C** = có thể để sau.
 
-## 4. Câu hỏi mở gộp
+### 2.1 Thị trường và sản phẩm
 
-### Sản phẩm và người dùng
+| # | Câu hỏi | Nguồn | Ưu tiên |
+|---|---------|-------|:-------:|
+| Q-01 | Tricount thực sự đã bỏ gói trả phí và không giới hạn? Cần kiểm tra trực tiếp | 01-1 | B |
+| Q-02 | Có app chia tiền/lập chuyến nào đáng kể ở Việt Nam chưa tìm thấy (kể cả mini-app Zalo, ví MoMo/ZaloPay)? | 01-2 | A |
+| Q-03 | Nhóm mục tiêu có thực sự cần "bình chọn + lịch trình" hay chỉ cần chia tiền? Cần phỏng vấn khoảng 10 người | 01-3 | A |
+| Q-04 | Tên "Tripmate" đã có ai đăng ký thương hiệu/tên miền? | 01-4 | A |
+| Q-05 | Nhóm đồng nghiệp và gia đình có cần tính năng riêng ngay MVP? | 01-5 | C |
+| Q-06 | Donate qua VietQR cá nhân có phát sinh nghĩa vụ thuế hoặc bị coi là doanh thu theo điều khoản hosting? | 01-6 | B |
 
-1. Primary segment có chỉ nhóm bạn 3–10 người trong MVP hay cùng tối ưu nhóm đồng nghiệp 4–20 người?
-2. Có cần co-owner không?
-3. Invite preview được xem những dữ liệu nào trước join?
-4. Display name trùng xử lý thế nào?
-5. Có cần budget estimate trong pilot không?
-6. Pilot có dùng chuyến thật và thu consent feedback/screenshot thế nào?
+### 2.2 Trải nghiệm và yêu cầu
 
-### Quyết toán và thanh toán
+| # | Câu hỏi | Nguồn | Ưu tiên |
+|---|---------|-------|:-------:|
+| Q-07 | Poll ngày: ba trạng thái (rảnh/có thể/bận) hay hai? Ngày cụ thể hay khoảng ngày? Có cần giờ? | 02-1, 03-2 | A |
+| Q-08 | Thành viên có được tự loại mình khỏi khoản chi hay chỉ người nhập/owner sửa? | 02-2 | A |
+| Q-09 | Nhắc nợ: push hay chỉ trong app? (push iOS PWA hạn chế) | 02-3, 04-2 | B |
+| Q-10 | Cách khôi phục phiên ẩn danh ngoài Google (mã khôi phục, link cá nhân)? | 02-4, 06-1 | **A** |
+| Q-11 | Có cho owner xem "ai chưa vote" theo tên không (tránh làm người thụ động ngại)? | 02-5 | C |
+| Q-12 | Giới hạn 30 ngày/chuyến, 1 tỷ VND/khoản chi, số thành viên tối đa (đề xuất 30) có hợp lý? | 03-1 | A |
+| Q-13 | Có cần vai trò `admin` giữa owner và member cho nhóm đông? | 03-3 | C |
+| Q-14 | Ai được thêm thành viên ảo: mọi thành viên hay chỉ owner? | 03-4 | A |
+| Q-15 | Mức offline tối thiểu cho MVP: chỉ đọc hay cả ghi? | 03-5 | A |
+| Q-16 | Sửa đồng thời: khóa lạc quan theo `version` có đủ hay cần hợp nhất theo trường? | 03-6 | B |
+| Q-17 | Thứ tự phase: nếu thử nghiệm sớm thấy cần vote trước thì có đảo không? | 04-1 | C |
+| Q-18 | Ước lượng size đã gồm rủi ro (VietQR thử trên nhiều ngân hàng) chưa? | 04-3 | A |
+| Q-19 | Tên tab "Quyết toán" vs "Chia tiền"; "chốt kèo", "quyết toán" có dễ hiểu với mọi tuổi? | 05-1 | B |
+| Q-20 | Dark mode trong MVP? (đề xuất hoãn) | 05-2 | C |
+| Q-21 | Font: tự host Be Vietnam Pro hay Inter qua `next/font`? | 05-3 | C |
+| Q-22 | Poll ngày dạng lưới có đọc được trên 360 px với 10+ người? | 05-4 | B |
+| Q-23 | Màn "Việc cần làm" cá nhân hóa bằng dữ liệu nào? | 05-5 | C |
 
-7. Trip chỉ đóng khi recipient xác nhận tất cả transfer hay owner có manual close?
-8. Có cần exact optimization sau greedy không?
-9. Remainder theo participant order hay member id?
-10. Payer không tham gia expense có phải rule chính thức không?
-11. VietQR static/dynamic và provider/BIN source nào?
-12. Bank profile lưu lâu dài hay nhập mỗi lần tạo QR?
-13. QR có được download/share ảnh không?
+### 2.3 Kỹ thuật và dữ liệu
 
-### Identity, privacy và dữ liệu
+| # | Câu hỏi | Nguồn | Ưu tiên |
+|---|---------|-------|:-------:|
+| Q-24 | Quy định bảo vệ dữ liệu cá nhân hiện hành tại Việt Nam yêu cầu gì với tên và số tài khoản? | 06-2 | B |
+| Q-25 | Có cần hợp nhất tài khoản khi đăng nhập Google trên máy mới ở MVP? | 06-3 | C |
+| Q-26 | 2 dự án Supabase free cho staging + prod có đủ, hay dùng Supabase local làm staging? | 06-4 | A |
+| Q-27 | Điều khoản Cloudflare/Netlify bản free về thương mại có đúng như nguồn nói? | 06-5 | **A** |
+| Q-28 | Danh mục BIN ngân hàng lấy từ đâu và cập nhật thế nào? | 06-6, 08 | A |
+| Q-29 | `member_bank_accounts` gắn theo `member_id` hay `user_id`? | 07-1 | A |
+| Q-30 | Khoản `marked_paid` người nhận không xác nhận: để nguyên, tự xác nhận sau N ngày, hay owner ép? | 07-2 | A |
+| Q-31 | `trip_budgets` ai được sửa? | 07-3 | B |
+| Q-32 | Có cần bảng `activity_log` cho thông báo trong app ngay MVP? | 07-4 | C |
+| Q-33 | Giới hạn tốc độ `join_trip_by_code` lưu ở đâu? | 07-5 | A |
+| Q-34 | Chặn đổi `role/status/user_id` ở policy `members_update_self` bằng trigger hay quyền theo cột? | 07-6 | A |
+| Q-35 | Thứ tự người tham gia `P` theo thời điểm tham gia có hợp lý? | 08-1 | B |
+| Q-36 | Có cho người dùng chọn thủ công người nhận phần dư 1₫? | 08-2 | C |
+| Q-37 | Giới hạn nội dung chuyển khoản thực tế của các ngân hàng phổ biến? Cần thử | 08-3 | **A** |
+| Q-38 | Có làm tối ưu chính xác (bitmask) ngay MVP với nhóm ≤ 12 người? | 08-4 | C |
+| Q-39 | QR đến thẻ (`QRIBFTTC`) có hỗ trợ? (đề xuất không) | 08-5 | C |
+| Q-40 | QR có số tiền cố định: có cần cảnh báo vì một số app cho sửa tiền? | 08-6 | B |
 
-14. Anonymous recovery dựa trên Google upgrade, invite rejoin hay export code?
-15. Có cần bảng profile riêng không?
-16. Payment profile encryption/key management dùng cách nào?
-17. Retention/hard delete bao lâu và ai chạy job?
-18. Có cần receipt image storage/OCR ở MVP không?
-19. Có cần snapshot breakdown trong settlement không?
+### 2.4 Kiểm thử và ra mắt
 
-### Kỹ thuật và vận hành
+| # | Câu hỏi | Nguồn | Ưu tiên |
+|---|---------|-------|:-------:|
+| Q-41 | Có sẵn những thiết bị thật nào để test? | 09-1 | A |
+| Q-42 | Ai có tài khoản ở 4 ngân hàng khác nhau để quét thử QR? | 09-2 | A |
+| Q-43 | pgTAP hay Vitest với JWT giả cho test RLS? | 09-3 | A |
+| Q-44 | Mức chấp nhận test E2E flaky với realtime? | 09-4 | C |
+| Q-45 | Ngưỡng cảnh báo 80% gửi qua kênh nào? | 09-5 | B |
+| Q-46 | Thời gian làm việc thực tế mỗi tuần? (lộ trình 10 tuần phụ thuộc mạnh) | 10-1 | **A** |
+| Q-47 | Có chuyến đi thật trong 4–8 tuần tới để làm bài thử nội bộ đầu tiên? | 10-2 | A |
+| Q-48 | Sẽ đăng bài ở nhóm/cộng đồng nào; đã xin phép admin? | 10-3 | B |
+| Q-49 | Công cụ analytics không cookie nào, phụ thuộc quyết định hosting? | 10-4 | B |
+| Q-50 | Có cần đăng ký tên miền và email hỗ trợ; ngân sách nhỏ cho việc này? | 10-5 | B |
 
-20. Realtime dùng Postgres Changes hay Broadcast?
-21. Preview dùng project/branch database riêng hay staging namespace?
-22. Offline MVP chỉ cache/draft hay cần write queue sớm?
-23. Map/geocoding khi nào bắt buộc?
-24. Device lab thật hay Playwright emulation đủ cho CI?
-25. Ngưỡng quota/cost nào dừng acquisition?
+---
 
-## 5. Quyết định cần chốt trước khi code
+## 3. Rà soát chéo: mâu thuẫn và thiếu sót
 
-| Mã | Quyết định | Owner đề xuất | Trạng thái |
-|---|---|---|---|
-| DEC-FINAL-01 | Settlement close rule | Product | Cần chốt |
-| DEC-FINAL-02 | Payment profile/encryption | Architecture + Security | Cần chốt |
-| DEC-FINAL-03 | `created_by_member_id` | Database | Cần chốt |
-| DEC-FINAL-04 | VietQR provider/BIN source | Architecture | Cần chốt |
-| DEC-FINAL-05 | Anonymous recovery/retention | Product + Privacy | Cần chốt |
-| DEC-FINAL-06 | Realtime transport | Architecture | Có thể chốt sau vertical slice |
-| DEC-FINAL-07 | Pilot cohort/incentive | Product | Cần chốt trước tuần 6 |
+Phương pháp: đối chiếu từng cặp tài liệu liên quan (yêu cầu ↔ bảng/RPC ↔ test; thuật toán ↔ dữ liệu; hosting ↔ doanh thu). Dưới đây là các điểm tìm thấy, **xếp theo mức độ cần sửa**.
 
-## 6. Definition of ready cho bước viết code
+| ID | Mức | Mâu thuẫn / thiếu sót | Tài liệu liên quan | Đề xuất sửa |
+|----|-----|------------------------|--------------------|-------------|
+| R-01 | **Cao** | **Khôi phục danh tính thành viên thật chưa có đường đi trong dữ liệu.** PRD (FR-36, BR-09) và kiến trúc (4.4) cho phép người ẩn danh mất phiên chọn "Tôi là…" để lấy lại danh tính. Nhưng RPC `claim_member` ở `07` chỉ cập nhật khi `user_id IS NULL`, tức chỉ xử lý **thành viên ảo**. Một thành viên thật đã có `user_id` (của phiên đã mất) sẽ không nhận lại được, và `list_claimable_members` cũng không trả họ. | 03, 04 (US-07), 06, 07 | Bổ sung RPC kiểu `request_rebind(member_id)` và `approve_rebind(...)` (chủ phiên cũ hoặc owner duyệt), hoặc "link khôi phục cá nhân" dùng một lần do owner cấp. Cần chốt Q-10 trước. Ghi thêm vào bảng RPC và test T-A10 |
+| R-02 | Trung bình | **Hosting và doanh thu mâu thuẫn.** Brief (mục 7) lên kế hoạch donate/affiliate/quảng cáo, trong khi gói Vercel Hobby chỉ cho phép dự án phi thương mại. Đã được nêu ở `01` mục 7.4 và `06` mục 9.3 nhưng quyết định bị trùng ở hai nơi (D-01, D-20). | 01, 06, 10 | Gộp D-01 và D-20 thành một quyết định duy nhất; đặt mốc "trước khi bật bất kỳ nguồn thu nào" vào checklist ra mắt (đã có ở `09`) |
+| R-03 | **Cao** | **Nội dung chuyển khoản cần "mã ngắn chuyến" nhưng bảng `trips` không có cột đó.** `08` mục 6.4 định dạng `TM <mã ngắn chuyến> <tên>`. Không nên dùng `invite_code` (là bí mật mời vào nhóm). | 07, 08 | Thêm cột `trips.short_code` (4–6 ký tự, không bí mật, unique) vào `07` và RPC `create_trip` |
+| R-04 | **Cao** | **Số dư "chuẩn" khác nhau giữa DB và client khi có khoản chờ xác nhận.** `07` (D-28) chỉ tính thanh toán `confirmed`; `08` (D-34) gợi ý quyết toán có tính khoản `marked_paid`; kiến trúc (D-22) coi RPC là nguồn chuẩn và test PT-06 yêu cầu client và SQL cho cùng `net`. Khi có khoản chờ xác nhận, hai nơi sẽ lệch. | 06, 07, 08, 09 | Định nghĩa hai đại lượng rõ ràng: `net` (chỉ `confirmed`, đối chiếu PT-06) và `net_with_pending` (dùng cho gợi ý). RPC trả cả hai. Cập nhật `08` mục 3 và `07` mục 6 |
+| R-05 | Thấp | **Chỗ ghi sẵn trong SQL nháp chưa hoàn chỉnh:** `get_trip_balances` trả `net = 0` tạm thời. | 07 | Viết lại bằng truy vấn bọc ngoài hoặc cột tính toán trước khi dùng (đã ghi chú trong tài liệu) |
+| R-06 | Thấp | **`trip_budgets` ai sửa chưa nhất quán:** bảng quyền ghi "Owner (hoặc mọi thành viên nếu muốn)", còn quyết định D-31 đề xuất mọi thành viên. | 07 | Chốt Q-31, sửa bảng quyền cho khớp |
+| R-07 | Thấp | **Đặt tên gây nhầm:** bảng `settlements` thực chất là các **khoản thanh toán**, trong khi "settlement" ở `08` và "quyết toán" ở PRD là cả quá trình. Một số ID cũng bị trùng/ghi hai lần (D-21 và D-35 giống nhau; D-01 và D-20 giống nhau). Hàm "ping giữ Supabase hoạt động" ở `06` chưa có trong danh sách RPC của `07`. Đánh số `FR-29a` (ảnh hóa đơn) hơi gượng. | 03, 06, 07, 08 | Đổi tên bảng thành `payments` (cập nhật `06`, `07`, `09`) hoặc giữ nguyên nhưng ghi rõ trong thuật ngữ; hợp nhất quyết định trùng; thêm RPC/endpoint ping; đánh lại số FR ảnh hóa đơn thành FR-38 |
 
-- [ ] Các quyết định `DEC-FINAL-01..05` đã có câu trả lời.
-- [ ] PRD, UX và database dùng cùng tên field/trạng thái.
-- [ ] Settlement test cases được chấp nhận, đặc biệt rounding và greedy limitation.
-- [ ] RLS policy đã được chuyển thành test cases với ít nhất hai user/hai trip.
-- [ ] Vertical slice `create → join → expense → balance` có story và E2E acceptance rõ.
-- [ ] Không có secret/bank data thật trong repo, seed hoặc analytics design.
-- [ ] Người review hiểu đây là MVP và non-goals không phải backlog bị bỏ quên.
+### Điểm đã kiểm tra và **khớp**
 
-## 7. Câu hỏi mở
+- Danh sách bảng subscribe realtime (`06`) trùng tên với bảng ở `07`.
+- Quy tắc làm tròn ở PRD (EC-03) trùng với thuật toán ở `08`; test TC-01 đến TC-18 ở `08` được tham chiếu đúng ở `09`.
+- Các phase ở `04` khớp với lịch tuần ở `10` (P0 tuần 1 đến P5 tuần 9–10).
+- Ví dụ tối giản nợ ở PRD FR-30 (+200k, −25k, −175k) trùng với TC-11 ở `08`.
+- Ma trận truy vết ở PRD tham chiếu đúng ID màn hình ở `05` (S01–S17).
 
-Các câu hỏi mở đầy đủ được gộp tại mục 4 của tài liệu này. Những câu có ảnh hưởng trực tiếp đến schema hoặc payment phải được trả lời trước khi tạo migration production: settlement close rule, payment profile/encryption, anonymous recovery/retention và VietQR provider.
+### Lưu ý về độ tin cậy của số liệu
+
+- Giới hạn Supabase (200 kết nối realtime, 2 triệu thông điệp) lấy từ **một** nguồn; một nguồn khác cho số khác ở gói Pro. Cần xác nhận tại trang chính thức.
+- Giá/giới hạn Splitwise không được công bố rõ và các nguồn lệch nhau.
+- Cấu trúc trường VietQR (GUID `A000000727`, service code `QRIBFTTA`) dựa trên kiến thức về chuẩn NAPAS và tài liệu cộng đồng; chuỗi mẫu đã tính CRC đúng nhưng **chưa quét thử bằng app ngân hàng thật**.
+- Các con số KPI ở `01` là giả định khởi điểm, không phải dự báo.
+
+---
+
+## Câu hỏi mở của README
+
+1. Bạn muốn xử lý các điểm R-01, R-03, R-04 ngay (cập nhật `03`, `06`, `07`, `08`) hay trả lời Q-10, Q-29, Q-30 trước rồi sửa một lượt?
+2. Có đổi tên `settlements` thành `payments` (R-07) không?
+3. Bạn có muốn một tài liệu quyết định gộp (decision log) để theo dõi D-01 đến D-45 ở một nơi?
 
 ## Quyết định cần chốt
 
-| Mã | Quyết định cuối cần ghi nhận | Tài liệu cập nhật sau khi chốt |
-|---|---|---|
-| DEC-FINAL-01 | Settlement close rule | `03-prd.md`, `05-ux-and-screens.md`, `07-database.md`, `09-test-plan.md` |
-| DEC-FINAL-02 | Payment profile/encryption | `06-architecture.md`, `07-database.md`, `08-settlement-algorithm.md` |
-| DEC-FINAL-03 | `created_by_member_id` trong expense | `03-prd.md`, `07-database.md`, RLS tests |
-| DEC-FINAL-04 | VietQR provider/BIN source | `06-architecture.md`, `08-settlement-algorithm.md`, `10-roadmap-and-launch.md` |
-| DEC-FINAL-05 | Anonymous recovery/retention | `01-product-brief.md`, `06-architecture.md`, `07-database.md` |
+| ID | Quyết định | Đề xuất |
+|----|-----------|---------|
+| D-46 | Sửa R-01, R-03, R-04 trước khi viết code | Có |
+| D-47 | Đổi tên bảng `settlements` thành `payments` | Có, đổi sớm khi chưa có code |
+| D-48 | Tạo decision log gộp | Có, một tệp `docs/decision-log.md` |

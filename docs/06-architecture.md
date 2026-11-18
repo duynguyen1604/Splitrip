@@ -1,284 +1,328 @@
-# Tripmate — System Architecture
+# Tripmate — Kiến trúc hệ thống
 
-**Mục đích:** Mô tả kiến trúc triển khai, luồng dữ liệu, xác thực, realtime, offline, bảo mật, chi phí và vận hành cho MVP Tripmate.
+- **Mục đích:** Chốt kiến trúc kỹ thuật cho MVP: thành phần, công nghệ, xác thực, realtime, PWA, bảo mật, giới hạn gói free và vận hành.
+- **Phiên bản:** 0.1
+- **Cập nhật lần cuối:** 18/11/2026
 
-**Phiên bản:** 0.1
+## Tóm tắt
 
-**Cập nhật lần cuối:** 2026-11-17
+Kiến trúc là một ứng dụng Next.js (TypeScript) nói chuyện trực tiếp với Supabase (Postgres + Auth + Realtime + RLS), không có backend riêng. Logic nhạy cảm (tham gia bằng mã, tính số dư, lấy thông tin thanh toán) nằm trong hàm RPC của Postgres để bảo vệ bằng RLS. Thuật toán chia tiền và tạo VietQR là code TypeScript thuần, có test, dùng chung giữa client và test. Giới hạn gói free đủ cho khoảng 4.000 chuyến, nhưng có **hai điểm cần xử lý sớm**: dự án Supabase free bị tạm dừng sau 7 ngày không hoạt động, và **Vercel Hobby cấm dùng thương mại** (xem mục 9.3).
 
-**Tóm tắt:** Tripmate dùng React + Vite + TypeScript làm web/PWA, Cloudflare Pages Free làm static hosting và Supabase làm Postgres/Auth/Realtime/RLS. Client gọi Supabase API/RPC hoặc Edge Functions cho mutation; dữ liệu private được bảo vệ ở RLS. Docker dùng cho local/CI và build reproducible, không phải runtime production trên Cloudflare Free. VietQR và map là integration tùy chọn có fallback copy/manual.
+> Số liệu giới hạn dưới đây tổng hợp từ các bài viết năm 2026 và có thể đã đổi. Hãy xác nhận tại supabase.com/pricing và vercel.com/pricing trước khi chốt.
+
+---
 
 ## 1. Sơ đồ tổng quan
 
 ```mermaid
 flowchart LR
-    U[User trên iOS Safari / Android Chrome / Desktop] --> PWA[React + Vite PWA<br/>TypeScript + Tailwind + shadcn/ui]
-    PWA --> EDGE[Cloudflare Pages Free<br/>Static assets + preview deploys]
-    PWA --> AUTH[Supabase Auth<br/>Anonymous + Google upgrade]
-    PWA --> API[Supabase API/RPC + optional Edge Functions<br/>Zod validation + domain rules]
-    API --> DB[(Supabase Postgres<br/>RLS + migrations + RPC)]
-    PWA -. realtime .-> RT[Supabase Realtime]
-    RT --> DB
-    API --> QR[VietQR provider / local payload builder]
-    API -. optional .-> MAP[Map/geocoding provider]
-    PWA --> ERR[Sentry free tier<br/>redacted errors]
-    API --> ANALYTICS[Privacy-first event sink<br/>aggregate events only]
+    subgraph Client[Thiết bị người dùng]
+        PWA[PWA Next.js + React]
+        SW[Service Worker + cache]
+        PWA --- SW
+    end
+    subgraph Host[Hosting]
+        NX[Next.js: SSR/Static + Route Handlers]
+    end
+    subgraph SB[Supabase]
+        AUTH[Auth: anonymous + Google]
+        DB[(Postgres + RLS + RPC)]
+        RT[Realtime]
+    end
+    subgraph Ext[Dịch vụ ngoài]
+        MAP[Google Maps: chỉ link]
+        BANK[Danh mục ngân hàng BIN: file tĩnh]
+        SENTRY[Sentry]
+    end
+    PWA -->|HTTPS| NX
+    PWA -->|supabase-js| AUTH
+    PWA -->|supabase-js + RPC| DB
+    PWA <-->|WebSocket| RT
+    RT --- DB
+    PWA -->|link| MAP
+    PWA --> SENTRY
+    NX --> SENTRY
+    PWA -.->|tạo payload VietQR trong client| BANK
 ```
 
-### Luồng request chính
+Lưu ý: VietQR được tạo hoàn toàn ở client (payload EMVCo tự tính CRC), không gọi dịch vụ ngoài, nên không rò rỉ số tiền/tài khoản cho bên thứ ba và hoạt động offline.
 
-1. Browser tải static PWA shell từ Cloudflare Pages.
-2. Supabase client khôi phục anonymous session hoặc tạo session khi cần.
-3. Query read dùng Supabase client với RLS cho dữ liệu không cần domain orchestration.
-4. Mutation đi qua Supabase RPC/Edge Function hoặc transaction được bảo vệ bằng RLS: validate input, kiểm tra membership/role, trả domain error đã chuẩn hóa.
-5. Supabase Realtime phát event cho trip đang mở; client invalidate query và refetch snapshot thay vì tự merge mọi field.
-6. QR được tạo từ validated payment profile + transfer snapshot; không ghi raw payload vào analytics.
+---
 
-## 2. Lý do chọn công nghệ và phương án thay thế
+## 2. Lựa chọn công nghệ và phương án thay thế
 
-| Thành phần | Lựa chọn | Lý do | Phương án thay thế đã cân nhắc | Khi nào đổi |
-|---|---|---|---|---|
-| Web framework | React + Vite + TypeScript | Build static nhanh, phù hợp PWA và Cloudflare Pages; private app không cần SSR | Next.js + vinext, React Router | Khi cần SSR/SEO động hoặc muốn dùng Cloudflare Workers runtime. |
-| UI | Tailwind + shadcn/ui | Tạo mobile UI nhanh, component source-owned, accessibility baseline | CSS Modules, MUI | Nếu design system cần theme runtime hoặc component enterprise. |
-| Database | Supabase Postgres | SQL mạnh cho relational money data, migrations, RLS, RPC | Neon + Drizzle, Firebase | Khi cần scale/workload khác hoặc RLS không đủ. |
-| Auth | Supabase Auth anonymous + Google | Đúng yêu cầu join không login; upgrade identity cùng hệ | Clerk, Auth.js | Nếu cần nhiều provider/organization phức tạp. |
-| Realtime | Supabase Realtime | Đủ cho trip nhỏ; tích hợp cùng DB | Pusher/Ably, WebSocket riêng | Khi fan-out, presence hoặc quota không phù hợp. |
-| Client state | TanStack Query + local UI state | Cache/invalidation rõ; tránh global store lớn | SWR, Zustand | Khi domain state offline phức tạp hơn. |
-| Validation | Zod dùng chung client/server | Schema đồng nhất, error field-level | Valibot, Yup | Chỉ khi bundle/perf bắt buộc. |
-| Hosting | Cloudflare Pages Free | Static assets, Git preview deployments, CDN và free tier phù hợp MVP | Vercel, Netlify | Khi cần SSR/Workers-specific runtime hoặc Pages limits không đủ. |
-| Docker | Dockerfile + Compose | Local Supabase/app parity, CI build/lint/test, portable artifact | Devcontainer | Không dùng Docker container runtime trên Cloudflare Free; Cloudflare Containers là paid. |
-| QR | VietQR payload builder hoặc provider | Core settlement có fallback copy; không khóa vào một provider | Tự encode EMVCo toàn bộ, NAPAS integration | Khi cần guaranteed bank coverage/monitoring. |
-| Map | Không bắt buộc, link Google Maps/OSM trước | Giảm API key/cost; itinerary vẫn chạy | Mapbox, Google Maps API | Khi người dùng cần search/geocoding có cấu trúc. |
-| Error monitoring | Sentry free | Stack trace + release + breadcrumbs, có scrub data | Cloudflare logs | Khi cần retention/alerting cao hơn. |
+| Thành phần | Lựa chọn | Lý do | Phương án đã cân nhắc |
+|------------|----------|-------|----------------------|
+| Framework | Next.js (App Router) + TypeScript | Hệ sinh thái lớn, PWA, SSR cho trang giới thiệu | Vite + React SPA (đơn giản hơn nhưng mất SSR cho landing); SvelteKit (ít tài liệu cho dev solo hơn) |
+| UI | Tailwind + shadcn/ui | Nhanh, tùy biến, đạt a11y mặc định | Mantine, MUI (nặng hơn) |
+| Backend | Supabase | Postgres + Auth ẩn danh + Realtime + RLS trong một chỗ, gói free | Firebase (không có SQL, truy vấn nợ phức tạp khó hơn); PocketBase (tự host, tốn vận hành); tự viết API (tốn công cho solo dev) |
+| Xác thực | Supabase Auth: anonymous + Google | Hỗ trợ nâng cấp ẩn danh lên Google giữ nguyên user id | Magic link email (cần email, thêm bước) |
+| Realtime | Supabase Realtime (Postgres Changes) | Có sẵn, đủ cho nhóm nhỏ | Polling (đơn giản nhưng chậm); Broadcast tùy chỉnh (phức tạp hơn) |
+| State client | TanStack Query | Cache, lạc quan, invalidation bằng realtime | Redux/Zustand (dư thừa) |
+| Form/validation | React Hook Form + Zod | Dùng lại schema giữa client và test | — |
+| Kéo thả | dnd-kit | Hỗ trợ cảm ứng và a11y | react-beautiful-dnd (không còn được bảo trì tích cực) |
+| Test | Vitest, Playwright, pgTAP hoặc script RLS | Xem `09` | Jest (nặng hơn) |
+| Giám sát lỗi | Sentry (gói free) | Đủ cho MVP | LogRocket (đắt) |
+| Hosting | Xem mục 9.3 | — | Vercel, Cloudflare Pages, Netlify |
+
+---
 
 ## 3. Cấu trúc thư mục dự án
 
-```text
-.
-├─ src/
-│  ├─ app/                         # providers, layouts, route wiring
-│  ├─ pages/                       # route-level screens
-│  ├─ components/                  # shadcn/ui + shared UI
-│  ├─ features/                    # trips, polls, itinerary, expenses, settlement
-│  ├─ lib/                         # Supabase, validation, money, QR, analytics
-│  └─ main.tsx
-├─ tests/
-│  ├─ unit/                        # algorithms, validation
-│  ├─ integration/                 # RPC, RLS, repository
-│  └─ e2e/                         # Playwright journeys
+```
+tripmate/
+├─ app/                      # Next.js App Router
+│  ├─ (marketing)/page.tsx   # Landing (SEO)
+│  ├─ join/[code]/page.tsx   # S03, S04
+│  ├─ trips/
+│  │  ├─ page.tsx            # S01
+│  │  ├─ new/page.tsx        # S02
+│  │  └─ [tripId]/
+│  │     ├─ layout.tsx       # header + tabs
+│  │     ├─ page.tsx         # Tổng quan (S05)
+│  │     ├─ ideas/           # S06, S07
+│  │     ├─ itinerary/       # S08
+│  │     ├─ expenses/        # S09, S10, S11
+│  │     └─ settle/          # S12, S13
+│  └─ account/               # S16, S17
+├─ components/ui/            # shadcn/ui
+├─ features/
+│  ├─ trips/ ideas/ itinerary/ expenses/ settlement/
+│  └─ (mỗi feature: components, hooks, queries, schema)
+├─ lib/
+│  ├─ supabase/              # client, server, middleware
+│  ├─ money/                 # format VND, parse
+│  ├─ settlement/            # split.ts, balances.ts, simplify.ts (thuần, có test)
+│  ├─ vietqr/                # payload.ts, crc16.ts, banks.json
+│  └─ i18n/vi.ts             # toàn bộ chuỗi tiếng Việt
 ├─ supabase/
-│  ├─ migrations/
+│  ├─ migrations/            # SQL đánh số
 │  ├─ seed.sql
-│  └─ functions/                   # only if Edge Function needed
-├─ public/
-│  ├─ icons/
-│  └─ screenshots/
-├─ Dockerfile                      # local/CI build, not Cloudflare runtime
-├─ docker-compose.yml              # optional local app + tooling
-├─ vite.config.ts
-├─ wrangler.toml                   # optional Pages tooling
-├─ docs/
-├─ .env.example
-└─ package.json
+│  └─ tests/                 # kiểm thử RLS
+├─ e2e/                      # Playwright
+├─ public/                   # manifest, icon, service worker
+└─ docs/                     # bộ tài liệu này
 ```
 
-## 4. Luồng xác thực và identity
+---
+
+## 4. Luồng xác thực
+
+### 4.1 Tổng quan
 
 ```mermaid
 sequenceDiagram
-    participant B as Browser
+    participant U as Người dùng
+    participant C as Client
     participant A as Supabase Auth
-    participant API as Tripmate API/RPC
-    participant DB as Postgres/RLS
-
-    B->>A: signInAnonymously()
-    A-->>B: anonymous user/session
-    B->>API: create trip / redeem invite
-    API->>DB: transaction with auth.uid()
-    DB-->>API: membership + trip
-    API-->>B: trip snapshot
-    B->>A: linkIdentity(Google)
-    A-->>B: upgraded user identity
-    B->>API: claim/merge anonymous membership
-    API->>DB: merge by old user id + new user id
-    DB-->>API: deduplicated memberships/history
+    participant D as Postgres (RPC)
+    U->>C: Mở link /join/CODE
+    C->>A: Có phiên chưa?
+    alt Chưa có
+        C->>A: signInAnonymously()
+        A-->>C: session (user_id)
+    end
+    U->>C: Nhập tên, bấm Vào nhóm
+    C->>D: rpc join_trip_by_code(code, display_name)
+    D-->>C: trip_id, member_id
+    C-->>U: Vào trang chuyến
 ```
 
-### Quy tắc identity
+### 4.2 Nâng cấp ẩn danh lên Google
 
-| ID | Quy tắc |
-|---|---|
-| ARCH-AUTH-01 | Anonymous user là Supabase `auth.users` identity thật, không lưu password/email giả trong app table. |
-| ARCH-AUTH-02 | `trip_members.user_id` nullable cho virtual member; `virtual_member_id`/flag phân biệt member ảo. |
-| ARCH-AUTH-03 | Upgrade identity phải atomic; nếu Google account đã có member trong cùng trip thì merge, không duplicate. |
-| ARCH-AUTH-04 | Không dùng invite code như authentication credential sau khi redeem; membership + session mới cấp quyền. |
-| ARCH-AUTH-05 | Nếu session mất, app không tự đoán member bằng display name; chỉ hướng dẫn sign-in/recovery hoặc owner mời lại. |
+Dùng liên kết danh tính (`linkIdentity`) với phiên ẩn danh hiện có. **Không đổi `user_id`**, nên mọi `trip_members` vẫn đúng và không cần hợp nhất. Đây là đường đi chính và đơn giản nhất.
 
-## 5. Realtime strategy
+### 4.3 Hai trường hợp cần "hợp nhất"
 
-| Bảng/scope | Subscribe? | Lý do/cách xử lý |
-|---|---|---|
-| `trip_members` | Có trong Members/Overview | Cập nhật joined/pending; khi event tới invalidate member query. |
-| `polls`, `poll_options`, `poll_votes` | Có trong Poll | Vote/lock cần phản hồi nhanh; refetch poll aggregate sau event. |
-| `itinerary_days`, `itinerary_items` | Có trong Itinerary | Reorder/add cần thấy; client không tự cộng order nếu event thiếu. |
-| `expenses`, `expense_participants` | Có trong Expense/Settlement | Event invalidate expense list + balance; không truyền raw bank data. |
-| `settlement_transfers` | Có trong Settlement/Transfer | Status timeline cập nhật; refetch snapshot khi expense revision. |
-| `audit_events` | Không subscribe toàn bộ | Chỉ owner/admin query phân trang khi mở history. |
+| Trường hợp | Nguyên nhân | Giải pháp |
+|-----------|-------------|-----------|
+| **Nhận thành viên ảo** | Thành viên ảo chỉ là dòng `trip_members` không có `user_id` | RPC `claim_member(member_id)`: gán `user_id = auth.uid()`; chống đua bằng cập nhật có điều kiện `WHERE user_id IS NULL` |
+| **Đăng nhập Google trên máy mới khi đã có tài khoản Google cũ** | `linkIdentity` thất bại vì Google đã gắn với user khác; hoặc người dùng đăng nhập Google thẳng, tạo user mới | RPC `merge_user(old_user_id)` chạy sau khi xác minh cả hai phiên (phiên ẩn danh cũ còn hiệu lực), chuyển `trip_members.user_id` sang user mới. Phức tạp nên xếp **Should/Phase 5** |
 
-### Tránh xung đột
+### 4.4 Khôi phục phiên ẩn danh (FR-36)
 
-- Client lưu `updated_at` hoặc `row_version` và gửi version khi update.
-- Server reject stale update bằng `409`/domain error; client hiển thị lựa chọn reload.
-- Realtime event chỉ là signal invalidate, không phải nguồn sự thật cuối cùng.
-- Drag/drop reorder dùng transaction cập nhật các `position` trong cùng ngày.
-- Mutation có idempotency key cho action dễ retry (redeem invite, create expense).
-- Khi tab hidden, unsubscribe hoặc giảm subscription; khi visible refetch snapshot.
+Phiên ẩn danh mất khi xóa cookie/đổi máy. Giải pháp theo thứ tự:
 
-## 6. PWA và offline
+1. Nhắc nâng cấp Google sau khoản chi đầu tiên (UX-02).
+2. Mở lại link mời, chọn "Tôi là…" từ danh sách thành viên **chưa nâng cấp Google**. Để chống mạo danh, thành viên đang có phiên hoạt động gần đây cần được xác nhận bởi chính họ hoặc owner (BR-09), và nhóm hiển thị thông báo "Đức vừa vào từ thiết bị mới".
+3. Owner có thể tạo "link khôi phục cá nhân" dùng một lần cho một thành viên.
 
-| Phần | Hành vi |
-|---|---|
-| App shell | Cache JS/CSS/icons và landing assets bằng service worker. |
-| Public join | Không cache private trip response lâu; invite preview có TTL ngắn. |
-| Read cache | TanStack Query persist có giới hạn, mã hóa không được coi là security boundary; badge stale bắt buộc. |
-| Draft | Expense draft lưu local theo `tripId + userId`, không tự gửi khi online lại. |
-| Write offline | Không submit expense/poll offline trong MVP; UI nói rõ để tránh duplicate. |
-| Update | Service worker update có prompt mềm; không clear local drafts khi deploy version mới. |
+Rủi ro còn lại được ghi trong `Câu hỏi mở`.
 
-Offline write chỉ được bật sau khi có client-generated idempotency key, outbox, retry/backoff, conflict UI và test mất mạng giữa request/response.
+### 4.5 Chống lạm dụng phiên ẩn danh
 
-## 7. Quản lý trạng thái và cache client
+Bật CAPTCHA cho đăng nhập ẩn danh, giới hạn tốc độ theo IP của Supabase, và theo dõi tăng đột biến số user ẩn danh. Hạn mức MAU 50.000 của gói free tính cả người dùng ẩn danh.
 
-| Loại state | Công cụ/nguyên tắc |
-|---|---|
-| Server state | TanStack Query theo key `trip`, `members`, `polls`, `itinerary`, `expenses`, `settlement`; invalidation sau mutation. |
-| Form state | React Hook Form + Zod; draft trong memory/local storage theo sensitivity. |
-| UI state | Local React state: sheet open, selected tab, filters, confirm dialog. |
-| Auth state | Supabase client/session listener; không copy access token vào app store. |
-| Money | `bigint`/integer string qua JSON; không dùng JS floating point cho calculation. |
-| URL state | `tripId`, tab, pollId, filter không nhạy cảm; không để raw account info hoặc invite secret trong query. |
+---
 
-## 8. Bảo mật và quyền riêng tư
+## 5. Chiến lược Realtime
 
-| ID | Control | Thiết kế |
-|---|---|---|
-| SEC-01 | RLS | Mọi private table có policy dựa trên active membership; owner policy tách khỏi member policy. |
-| SEC-02 | Server validation | Zod/schema + domain checks; không tin `role`, `payer_id`, `trip_id` từ client. |
-| SEC-03 | Invite abuse | Token random đủ dài, hash token nếu lưu, TTL/revoke, rate limit theo IP/session, không enumerate trip. |
-| SEC-04 | Bank privacy | Bank details encrypted at rest bởi provider; app chỉ fetch fields cần render transfer; redact logs/analytics. |
-| SEC-05 | XSS/content | Note/display name render escaped; link location validate scheme; không cho arbitrary HTML. |
-| SEC-06 | Session/API | Dùng Supabase client/session APIs, RLS/RPC và Edge Function validation; không đặt secret trong client bundle. |
-| SEC-07 | Abuse/quota | Limit payload length, member/expense count, invite redemption và expensive settlement calls. |
-| SEC-08 | Audit | Lock poll, role change, expense void/edit, transfer status lưu actor/timestamp/action; không lưu raw secret. |
-| SEC-09 | Data deletion | Soft delete nghiệp vụ, user data export/delete workflow trước public launch; retention document phải rõ. |
+| Bảng | Subscribe? | Lý do |
+|------|-----------|-------|
+| `expenses`, `expense_splits` | Có | Số dư thay đổi ngay khi người khác nhập |
+| `idea_votes`, `ideas` | Có | Vote thấy ngay |
+| `date_votes`, `date_poll_options` | Có | Poll ngày |
+| `itinerary_items` | Có | Sắp xếp lịch trình |
+| `trip_members` | Có | Thành viên mới vào |
+| `settlements` | Có | Thanh toán đã đánh dấu |
+| `expense_history`, `member_bank_accounts` | Không | Không cần realtime, tăng tải và rủi ro riêng tư |
 
-## 9. Free tier, tải và ngưỡng nâng cấp
+**Cách làm:** Mỗi trang chuyến chỉ mở **một kênh** theo `trip_id` (lọc `trip_id=eq.<id>`) và khi nhận sự kiện thì **invalidate** truy vấn TanStack Query tương ứng, thay vì tự vá dữ liệu cục bộ. Đơn giản và ít lỗi hơn.
 
-Các giới hạn nhà cung cấp thay đổi theo thời gian; bảng dưới là operational budget để MVP tự bảo vệ, không phải cam kết quota. Cloudflare Pages Free hiện có giới hạn build/file cần theo dõi; static asset là lựa chọn chính để tránh phụ thuộc Pages Functions.
+**Tránh xung đột dữ liệu:**
 
-| Hạng mục | Giả định MVP | Guardrail |
-|---|---|---|
-| Active trip | 100–500 trip lũy kế trong pilot | Archive trip completed; paginate data. |
-| Member/trip | ≤10 Must, soft limit 20 | Reject vượt limit với message; không query toàn bộ users. |
-| Expense/trip | ≤500 | Paginate; aggregate bằng SQL/RPC. |
-| Realtime | Chỉ tab active, trip scope | Unsubscribe hidden tabs; không broadcast toàn workspace. |
-| Storage | Không upload receipt trong MVP | Chỉ lưu URL/note; OCR/ảnh để phase sau. |
-| Server runtime | API nhẹ, settlement SQL/TypeScript bounded | Không chạy job dài trong request; precompute snapshot khi cần. |
-| Bandwidth | PWA asset cache, JSON pagination | Không gửi raw full history mỗi event. |
+- Sửa khoản chi dùng khóa lạc quan: cột `version`; `UPDATE ... WHERE id = ? AND version = ?`. Nếu 0 hàng thay đổi thì báo xung đột (EC-05).
+- Thứ tự lịch trình dùng cột `position` kiểu `numeric` (kiểu "fractional indexing") để chèn giữa mà không phải đánh số lại cả danh sách; có tác vụ chuẩn hóa định kỳ nếu cần.
+- Vote là bản ghi riêng cho mỗi (member, idea) nên không xung đột.
+- Số dư không lưu sẵn; luôn tính từ dữ liệu gốc (hàm `get_trip_balances`) để không bị lệch.
 
-Theo tài liệu Cloudflare hiện tại, Pages Free có giới hạn 500 builds/tháng, 20.000 files/site và 25 MiB/file; nếu dùng Pages Functions, request được tính vào quota Workers Free. Xem [Pages limits](https://developers.cloudflare.com/pages/platform/limits/) và [Pages Functions pricing](https://developers.cloudflare.com/pages/functions/pricing/). Các con số này cần xác minh lại khi triển khai.
+**Giới hạn:** gói free khoảng 200 kết nối đồng thời và 2 triệu thông điệp mỗi tháng (xem mục 9).
 
-### Khi phải nâng cấp
+---
 
-- Database/storage/bandwidth đạt 70% quota hai tuần liên tiếp.
-- Realtime disconnect hoặc latency ảnh hưởng >5% active sessions.
-- Sentry/event retention không đủ để debug P1.
-- Cần background jobs, file storage lớn, bank/payment integration hoặc traffic public vượt dự báo.
+## 6. Chiến lược PWA và Offline
 
-## 10. CI/CD, môi trường và monitoring
+| Hạng mục | Quyết định |
+|----------|-----------|
+| Manifest | Tên, icon, `display: standalone`, `lang: vi`, màu chủ đạo |
+| Service worker | Cache tài nguyên tĩnh (app shell); cache `stale-while-revalidate` cho truy vấn đọc của chuyến |
+| Offline đọc (NFR-10, Must) | Lịch trình, danh sách khoản chi và số dư đã tải gần nhất xem được khi mất mạng; hiển thị dải "Đang offline" |
+| Offline ghi (NFR-11, Should) | Hàng đợi ghi khoản chi cục bộ (IndexedDB), gửi lại khi có mạng, mỗi khoản có khóa chống trùng (`client_id` UUID) để không tạo bản sao |
+| Cài về màn hình chính | Gợi ý cài sau lần dùng có giá trị; iOS cần hướng dẫn thủ công (Chia sẻ, rồi Thêm vào màn hình chính) |
+| Push notification | **Hoãn** (iOS PWA hạn chế, thêm độ phức tạp) |
+| Cập nhật | Thông báo "Có phiên bản mới" khi service worker mới sẵn sàng |
 
-| Môi trường | Dữ liệu | Deploy | Quy tắc |
-|---|---|---|---|
-| Local | Supabase local/seed giả | Dev command | Không dùng bank data thật. |
-| Preview | Database branch/project riêng nếu có | Pull request/preview | RLS/test E2E smoke; secret riêng. |
-| Staging | Dataset synthetic | Manual promote | Chạy migration + RLS/integration + mobile smoke. |
-| Production | User data thật | Protected main/tag | Backup/migration review, Sentry release, quota check, rollback plan. |
+Xung đột khi đồng bộ hàng đợi: khoản chi mới không xung đột (chỉ chèn); chỉnh sửa offline sẽ bị chặn trong MVP.
 
-### Pipeline tối thiểu
+---
 
-1. Pull request: format/lint/typecheck/unit test.
-2. Migration lint + RLS/integration test với hai user và hai trip.
-3. Playwright smoke create → join → expense → settlement.
-4. Preview deploy; review accessibility bằng keyboard/axe.
-5. Merge main: deploy production sau approval; migration chạy trước app code cần schema mới.
+## 7. Quản lý trạng thái và cache phía client
 
-### Observability
+- **Dữ liệu máy chủ:** TanStack Query, khóa truy vấn theo `['trip', tripId, 'expenses']`. Thời gian `staleTime` ngắn (ví dụ 30 giây), dựa vào realtime để làm mới.
+- **Cập nhật lạc quan:** thêm khoản chi, vote, đánh dấu đã trả đều hiện ngay và hoàn tác khi lỗi.
+- **Trạng thái UI cục bộ:** React state; nhớ lựa chọn gần nhất (người trả, kiểu chia) trong `localStorage`.
+- **Phiên:** Supabase lưu phiên; middleware Next.js làm mới token.
+- **Tính toán:** tính số dư và gợi ý quyết toán **ở client** từ dữ liệu đã tải bằng hàm thuần (nhanh, dùng được offline), và đối chiếu với `get_trip_balances` ở phía DB trong kiểm thử để đảm bảo cả hai khớp.
 
-- Events: `trip_created`, `invite_opened`, `member_joined`, `poll_locked`, `expense_created`, `settlement_viewed`, `transfer_marked_paid`, `trip_completed`.
-- Không gửi tên, note, amount chi tiết, account number, raw token vào analytics.
-- Sentry tag `release`, browser family, route, correlation id; scrub request body.
-- Dashboard tối thiểu: 5xx, p95 API/read, join conversion, expense save failure, settlement recompute failure, quota.
+---
 
-## 11. Docker và Cloudflare deployment
+## 8. Bảo mật
 
-### Vai trò của Docker
+### 8.1 RLS
 
-Docker không phải production runtime của Cloudflare Pages Free. Docker được dùng để:
+Mọi bảng bật RLS; không bảng nào cho phép truy cập chỉ dựa vào `anon` key. Quy tắc chung: **chỉ thành viên đang hoạt động của chuyến mới đọc/ghi dữ liệu chuyến**. Chi tiết SQL trong `07-database.md`.
 
-- chạy local build/test giống CI;
-- đóng gói artifact build để kiểm tra trước khi push;
-- chạy Supabase CLI/tooling local nếu cần;
-- giữ phương án chuyển sang Cloud Run/Render/Fly.io hoặc VPS sau này mà không đổi code frontend.
+### 8.2 Link mời
 
-Docker image không được chứa Supabase service key, Google OAuth secret, bank data hoặc dữ liệu production.
+- Mã `invite_code` ngẫu nhiên từ nguồn an toàn, 12 ký tự (base32), không đoán được.
+- Tham gia **chỉ qua RPC** `join_trip_by_code` (SECURITY DEFINER); không có policy cho phép liệt kê chuyến theo mã.
+- Giới hạn tốc độ thử mã sai theo IP/người dùng; owner có thể đổi mã hoặc tắt nhận thành viên.
+- Giới hạn số thành viên mỗi chuyến (D-08).
 
-### Cloudflare Pages deployment
+### 8.3 Giới hạn tốc độ và chống lạm dụng
 
-| Thiết lập | Giá trị |
-|---|---|
-| Framework | React/Vite |
-| Install command | `npm ci` |
-| Build command | `npm run build` |
-| Output directory | `dist` |
-| Production branch | `main` |
-| Preview | Pull request deployment tự động |
-| Public variables | `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` |
-| Secret variables | Chỉ đặt ở Supabase/Edge Function; không đưa vào `VITE_*` |
+CAPTCHA cho phiên ẩn danh; giới hạn tạo chuyến mỗi người dùng/ngày; giới hạn kích thước chuỗi; kiểm tra bằng ràng buộc CHECK ở DB, không chỉ validate ở client.
 
-Luồng CI/CD:
+### 8.4 Dữ liệu ngân hàng (NFR-08)
 
-```text
-Pull Request
-  ├─ npm ci / lint / typecheck / unit / build
-  ├─ Docker build --target ci (không push production)
-  ├─ Playwright smoke
-  └─ Cloudflare Pages preview
+- Bảng `member_bank_accounts` **không có policy SELECT** cho người khác. Chủ tài khoản mới đọc/sửa được dữ liệu của mình.
+- Người cần chuyển tiền lấy thông tin qua RPC `get_payment_target(trip_id, to_member_id)` chỉ trả dữ liệu khi người gọi **thực sự là người nợ** trong chuyến đó (kiểm tra số dư âm, hoặc có giao dịch đề xuất).
+- Không ghi số tài khoản vào log, Sentry hay analytics (lọc trước khi gửi).
+- Cân nhắc mã hóa ở mức cột trong giai đoạn sau; hiện tại dựa vào RLS và RPC.
 
-main
-  ├─ Supabase migration review/apply
-  ├─ npm ci → npm run build → dist
-  └─ Cloudflare Pages production deploy
-```
+### 8.5 Quyền riêng tư
 
-Nếu sau này cần SSR hoặc Docker runtime thật, chuyển frontend sang Cloudflare Workers/vinext hoặc một container host riêng; không cố nhét Node server vào Pages Free.
+Thu thập tối thiểu: tên hiển thị, thông tin nhận tiền tùy chọn. Chính sách riêng tư tiếng Việt, chức năng xóa/ẩn danh hóa dữ liệu của mình (NFR-09). Cần rà soát quy định bảo vệ dữ liệu cá nhân hiện hành tại Việt Nam trước khi ra mắt công khai (xem `Câu hỏi mở`).
+
+### 8.6 Khác
+
+HTTPS bắt buộc; header bảo mật (CSP, X-Frame-Options); không đưa `service_role` key vào client; secret chỉ ở biến môi trường của host.
+
+---
+
+## 9. Giới hạn gói free, ước tính tải, khi nào nâng cấp
+
+### 9.1 Supabase Free (tổng hợp từ các nguồn 2026)
+
+| Tài nguyên | Giới hạn free | Tác động với Tripmate |
+|-----------|---------------|------------------------|
+| Dung lượng DB | 500 MB mỗi dự án | Xem ước tính 9.2 |
+| Băng thông (egress) | 5 GB/tháng | Thường đủ vì dữ liệu văn bản nhỏ |
+| MAU Auth | 50.000 (tính cả ẩn danh) | Cần theo dõi nếu lan truyền nhanh |
+| Realtime | khoảng 200 kết nối đồng thời, khoảng 2 triệu thông điệp/tháng | Giới hạn thực tế đầu tiên khi nhiều nhóm dùng cùng lúc |
+| Lưu trữ file | 1 GB | Dùng cho ảnh hóa đơn (hoãn) |
+| **Tự tạm dừng** | **Sau 7 ngày không hoạt động** | Nguy hiểm nếu giai đoạn thử nghiệm yên ắng |
+| Backup | Không có backup tự động ở gói free | Phải tự backup |
+
+### 9.2 Ước tính tải
+
+Giả định một chuyến trung bình: 6 thành viên, 40 khoản chi, 90 dòng chia, 10 ý tưởng, 60 vote, 15 hoạt động lịch trình. Kích thước ước tính cả chỉ mục khoảng 100–150 KB.
+
+| Chỉ số | Ước tính |
+|--------|----------|
+| Số chuyến trong 500 MB | khoảng 3.500 đến 5.000 chuyến |
+| Kết nối realtime đồng thời | Mỗi chuyến đang dùng khoảng 3–5 người; 200 kết nối là khoảng 40–60 chuyến cùng lúc |
+| Báo động nâng cấp | DB đạt 400 MB; realtime đạt 150 kết nối đỉnh; MAU đạt 40.000 |
+
+### 9.3 Hosting và điều khoản thương mại (quan trọng)
+
+Gói **Vercel Hobby chỉ dành cho dự án cá nhân, phi thương mại** (giới hạn khoảng 100 GB băng thông, 1 người dùng; các nguồn 2026 nhất quán về điểm này). Gói Pro là 20 USD/người/tháng. Mô hình thu nhập ở `01-product-brief.md` (affiliate, quảng cáo, có thể cả donate) sẽ **vi phạm** điều khoản Hobby khi bật.
+
+| Phương án | Ưu | Nhược |
+|-----------|----|-------|
+| A. Vercel Hobby cho MVP, chuyển host trước khi thu tiền | Triển khai Next.js dễ nhất | Phải di chuyển; nguy cơ quên |
+| B. Cloudflare Pages/Workers ngay từ đầu | Cho phép thương mại ở gói free (theo một nguồn 2026), băng thông rộng rãi | Next.js trên Cloudflare cần adapter, có thể có điểm khác biệt khi chạy |
+| C. Netlify | Cho phép thương mại ở gói free (theo nguồn 2026) | Hạn mức tín dụng; Next.js có độ tương thích riêng |
+| D. Vercel Pro | Ít rủi ro kỹ thuật nhất | 20 USD/tháng, trái ràng buộc "miễn phí hạ tầng" |
+
+**Đề xuất:** Phương án A cho đến hết thử nghiệm kín (chưa có doanh thu); đặt mốc "chuyển sang B hoặc C trước khi bật bất kỳ nguồn thu nào". Giữ code không phụ thuộc tính năng độc quyền của Vercel để di chuyển rẻ. Cần kiểm chứng lại điều khoản trước khi quyết định cuối.
+
+### 9.4 Khi nào nâng cấp
+
+| Tín hiệu | Hành động |
+|----------|-----------|
+| Cần chạy ổn định 24/7 hoặc có người dùng thật | Supabase Pro (khoảng 25 USD/tháng) để bỏ tự tạm dừng và có backup hằng ngày |
+| DB gần 400 MB | Dọn dữ liệu chuyến cũ (lưu trữ) hoặc nâng cấp |
+| Realtime gần trần | Giảm kênh (chỉ subscribe tab đang mở), hoặc nâng cấp |
+| Bắt đầu có doanh thu | Chuyển host theo mục 9.3 |
+
+### 9.5 Giữ dự án Supabase không bị tạm dừng
+
+Lịch GitHub Actions hằng ngày gọi một truy vấn nhẹ tới dự án (ví dụ endpoint `/health` qua RPC). Đồng thời lịch hằng tuần chạy `pg_dump` và lưu bản sao ngoài (artifact riêng hoặc kho lưu trữ riêng tư).
+
+---
+
+## 10. CI/CD, môi trường, giám sát
+
+| Chủ đề | Quyết định |
+|--------|-----------|
+| Môi trường | **dev** (Supabase local bằng CLI + Docker), **staging** (một dự án Supabase free riêng), **prod** (dự án Supabase free thứ hai). Gói free cho 2 dự án hoạt động nên staging và prod chiếm hết hạn mức |
+| Migration | Tệp SQL đánh số trong `supabase/migrations`, áp dụng bằng CLI qua CI; không sửa tay trên prod |
+| CI (GitHub Actions) | Lint, type-check, unit (Vitest), kiểm thử RLS trên Supabase local, E2E Playwright trên preview |
+| CD | `main` tự triển khai lên staging; gắn thẻ phát hành thì lên prod (có phê duyệt tay) |
+| Giám sát lỗi | Sentry free (client và server), lọc dữ liệu nhạy cảm |
+| Analytics | Tối giản, không cookie theo dõi, ưu tiên riêng tư (xem `10`) |
+| Uptime | Dịch vụ ping miễn phí (kèm tác dụng giữ Supabase hoạt động) |
+| Secrets | Biến môi trường trên host và GitHub Secrets |
+
+---
 
 ## Câu hỏi mở
 
-1. Dùng Supabase Realtime Postgres Changes hay Broadcast cho aggregate event; quota/latency nào chấp nhận được?
-2. Có cần tách Supabase project theo preview branch hay chỉ dùng một staging project với namespace dữ liệu?
-3. VietQR payload tự build có đủ an toàn hay bắt buộc dùng provider chính thức cho MVP?
-4. Có lưu `bank_account` encrypted trong DB hay chỉ yêu cầu nhập mỗi lần tạo QR?
-5. Recovery anonymous session sẽ dựa trên Google upgrade, invite rejoin hay export code tạm thời?
-6. Có cần file storage cho ảnh hóa đơn trong MVP không? Nếu có, retention và RLS bucket ra sao?
-7. Khi nào triển khai map/geocoding thay vì chỉ lưu location text + external map URL?
+1. Cách khôi phục danh tính ẩn danh nào vừa an toàn vừa không gây ma sát (mục 4.4)? Có chấp nhận rủi ro mạo danh trong nhóm bạn thân ở MVP không?
+2. Quy định về dữ liệu cá nhân tại Việt Nam hiện nay (luật mới có hiệu lực từ 2026) đòi hỏi gì với tên và số tài khoản? Cần tư vấn hoặc đọc nguồn chính thức.
+3. Có cần hợp nhất tài khoản khi đăng nhập Google trên máy mới (mục 4.3) ở MVP, hay hoãn?
+4. Dùng 2 dự án Supabase free cho staging và prod có đủ, hay dùng Supabase local làm staging và để 1 dự án dự phòng?
+5. Điều khoản Cloudflare/Netlify bản free về thương mại có đúng như các nguồn nói không? Cần đọc điều khoản chính thức.
+6. Danh mục BIN ngân hàng lấy từ đâu và cập nhật thế nào (file tĩnh tự duy trì hay nguồn công khai)?
 
 ## Quyết định cần chốt
 
-| Mã | Quyết định | Đề xuất mặc định |
-|---|---|---|
-| DEC-ARCH-01 | Backend boundary | Supabase client cho query đơn giản; RPC/Edge Functions cho mutation có transaction/domain rule; không dùng Next.js Server Actions. |
-| DEC-ARCH-02 | Realtime consistency | Event chỉ invalidate/refetch; DB snapshot là nguồn sự thật. |
-| DEC-ARCH-03 | Offline | Read cache + local draft, không offline write trong MVP. |
-| DEC-ARCH-04 | Map | Lưu location text + URL trước; không bắt API map để core flow chạy. |
-| DEC-ARCH-05 | Bank data | Không log; fetch theo transfer context; QR action chủ động. |
-| DEC-ARCH-06 | Preview data | Dùng dataset synthetic/project riêng; không đưa data production vào preview. |
+| ID | Quyết định | Đề xuất |
+|----|-----------|---------|
+| D-20 | Hosting cho MVP và mốc chuyển | Vercel Hobby tới hết thử nghiệm kín; chuyển trước khi có doanh thu (xem D-01) |
+| D-21 | Tạo VietQR ở client, không gọi dịch vụ ngoài | Có |
+| D-22 | Tính số dư ở client hay DB | Cả hai: client để hiển thị nhanh; RPC `get_trip_balances` để kiểm chứng và làm nguồn chuẩn |
+| D-23 | Backup | Hằng tuần `pg_dump` bằng GitHub Actions |
+| D-24 | Push notification | Hoãn sau MVP |
+| D-25 | Hợp nhất tài khoản (merge_user) | Hoãn sang Phase 5 hoặc sau |

@@ -1,192 +1,211 @@
-# Tripmate — Test Plan và Quality Strategy
+# Tripmate — Kế hoạch kiểm thử và chất lượng
 
-**Mục đích:** Định nghĩa cách kiểm thử chức năng, dữ liệu tiền, quyền truy cập, UX mobile và các tiêu chí release cho MVP.
+- **Mục đích:** Quy định chiến lược test, danh sách test case ưu tiên gắn với yêu cầu, checklist QA thủ công và tiêu chí ra mắt MVP.
+- **Phiên bản:** 0.1
+- **Cập nhật lần cuối:** 18/11/2026
 
-**Phiên bản:** 0.1
+## Tóm tắt
 
-**Cập nhật lần cuối:** 2026-11-17
+Một lập trình viên làm một mình nên kế hoạch tập trung vào **thứ dễ sai và đắt nhất khi sai**: tiền (chia, số dư, tối giản nợ), quyền truy cập (RLS, thông tin ngân hàng) và luồng đầu tiên của người dùng (vào bằng link). Kim tự tháp test: nhiều unit test thuần (thuật toán), vừa đủ integration/RLS test trên Supabase local, ít nhưng ổn định E2E bằng Playwright cho các luồng vàng, cộng QA thủ công trên điện thoại thật.
 
-**Tóm tắt:** Chất lượng Tripmate tập trung vào bốn rủi ro: tính tiền sai, lộ dữ liệu cross-trip, anonymous join thất bại và trạng thái thanh toán gây hiểu nhầm. Unit test bao phủ money/settlement; integration test bao phủ RPC/RLS; Playwright kiểm tra journey thật; manual QA chạy trên iOS Safari và Android Chrome trước pilot.
+---
 
-## 1. Chiến lược test theo lớp
+## 1. Chiến lược test
 
-| Lớp | Công cụ gợi ý | Phạm vi | Chạy khi |
-|---|---|---|---|
-| Unit | Vitest/Jest | Split allocation, rounding, balance, greedy transfer, validation, copy/format VND | Mỗi PR; coverage logic tiền ≥95%. |
-| Component | Testing Library | Expense sheet, poll, settlement status, accessibility state | Mỗi PR có UI thay đổi. |
-| Integration | Supabase local + test client | RPC, transaction, identity merge, idempotency, error mapping | Mỗi PR ảnh hưởng DB/API. |
-| RLS/security | Supabase local với nhiều user | Cross-trip isolation, owner/member/recipient policy, revoked invite | Mỗi schema/policy change; bắt buộc trước deploy. |
-| E2E | Playwright | Create → join → poll → itinerary → expense → settlement | PR smoke; nightly full suite. |
-| Visual/manual | iOS Safari, Android Chrome | Keyboard, bottom sheet, QR, network transition, PWA install | Mỗi release candidate. |
-| Performance | Lighthouse + scripted timing | Invite preview, overview, quick add, settlement | Trước pilot và khi schema/query đổi. |
-| Abuse | API test/rate-limit script | Invite guessing, payload size, duplicate submit, unauthorized mutation | Trước public launch. |
+| Tầng | Công cụ | Phạm vi | Mục tiêu độ phủ | Chạy khi |
+|------|---------|---------|-----------------|----------|
+| Unit | Vitest | `lib/settlement` (split, balances, simplify), `lib/vietqr` (TLV, CRC), `lib/money` (format/parse), schema Zod | 100% nhánh của `lib/settlement` và `lib/vietqr`; còn lại theo nhu cầu | Mỗi commit |
+| Property-based | Vitest + fast-check | PT-01 đến PT-05 trong `08` | 10.000 ca ngẫu nhiên mỗi thuộc tính | Mỗi commit (rút gọn), hằng đêm (đầy đủ) |
+| Integration (DB/RPC) | Vitest + Supabase local | RPC (`add_expense`, `join_trip_by_code`, `claim_member`...), ràng buộc CHECK, trigger tổng chia | Mọi RPC có ít nhất ca thành công + ca lỗi | Mỗi PR |
+| **Kiểm thử RLS** | Script SQL (pgTAP hoặc test đặt vai `set role`/`set request.jwt.claims`) | Mọi bảng: thử đọc/ghi với vai trò (chủ, thành viên, người ngoài, ẩn danh chưa vào chuyến) | 100% bảng có test "người ngoài không đọc/ghi được" | Mỗi PR |
+| Component | Vitest + Testing Library | Bottom sheet thêm chi tiêu, bộ chọn kiểu chia, hiển thị tiền | Các thành phần có logic | Mỗi PR |
+| E2E | Playwright (Chromium + WebKit + mô phỏng mobile) | Các luồng vàng ở mục 3 | 6–8 luồng | Mỗi PR vào `main` và trước ra mắt |
+| Hiệu năng | Lighthouse CI | Trang chủ, trang chuyến | LCP, kích thước JS (NFR-01, NFR-03) | Hằng tuần |
+| Truy cập | axe-core trong Playwright | Màn hình chính | Không có lỗi nghiêm trọng (NFR-12) | Mỗi PR |
+| Thủ công | Điện thoại thật | Mục 4 | Danh sách kiểm | Cuối mỗi phase, trước ra mắt |
 
-## 2. Test data và môi trường
+Dữ liệu test: dùng `seed.sql` (xem `07`), mỗi E2E tạo chuyến riêng để chạy song song.
 
-### Dataset chuẩn
+---
 
-| Dataset | Nội dung | Mục đích |
-|---|---|---|
-| `minimal-trip` | 1 owner + 1 member, 1 invite, 1 expense | Vertical slice. |
-| `full-trip` | 1 owner + 6 members + 2 virtual, 3 poll, 10 itinerary, 20 expense | E2E và UX. |
-| `rounding-trip` | Amount 1/2/3/100000, equal/percentage/shares | Money invariant. |
-| `settlement-trip` | Nhiều debtor/creditor, paid/confirmed/disputed | Status và transfer. |
-| `security-two-trips` | User A/B, Trip A/B, membership khác nhau | RLS. |
-| `stale-concurrency` | Hai client cùng edit poll/itinerary/expense | Conflict/realtime. |
+## 2. Test case ưu tiên theo module
 
-Quy tắc: dataset không dùng bank account thật, không dùng tên người thật có thể nhận diện, seed deterministic và reset được.
+Ưu tiên: **P0** chặn ra mắt, **P1** nên đạt, **P2** nếu còn thời gian. Cột "Loại": U (unit), I (integration), R (RLS), E (E2E).
 
-## 3. Test case ưu tiên theo module
+### 2.1 Chuyến đi và thành viên
 
-### Trip, join và identity
+| ID | Test | Yêu cầu | Loại | Ưu tiên |
+|----|------|---------|------|---------|
+| T-A01 | Tạo chuyến chỉ với tên; người tạo là owner | FR-01, FR-05 | I, E | P0 |
+| T-A02 | Mở link, nhập tên, vào nhóm không cần email/mật khẩu | FR-02 | E | P0 |
+| T-A03 | Link sai/đã đổi mã trả thông báo, không lộ thông tin chuyến | FR-03, EC-13 | I, E | P0 |
+| T-A04 | Đổi mã mời: link cũ vô hiệu, thành viên cũ vẫn vào được | FR-03 | I | P0 |
+| T-A05 | Thêm thành viên ảo và gán vào khoản chi | FR-04 | I | P0 |
+| T-A06 | Nhận thành viên ảo: gắn `user_id`, giữ lịch sử | FR-37, EC-04 | I, E | P0 |
+| T-A07 | Hai người cùng nhận một thành viên ảo: chỉ một thành công | EC-06 | I | P0 |
+| T-A08 | Rời nhóm khi còn nợ: vẫn trong số dư và gợi ý | FR-07, EC-01 | I | P0 |
+| T-A09 | Member không xóa được chuyến, không đổi mã mời | FR-05 | R, I | P0 |
+| T-A10 | Mất phiên ẩn danh, khôi phục bằng "Tôi là…" | FR-36 | E | P0 |
+| T-A11 | Liên kết Google giữ nguyên `user_id` và dữ liệu | FR-08 | I | P1 |
+| T-A12 | Giới hạn số thành viên mỗi chuyến | D-08 | I | P1 |
+| T-A13 | Xóa mềm chuyến: ẩn với mọi người, không tính toán | FR-06, BR-06 | I, R | P1 |
 
-| ID | Scenario | Liên kết | Expected |
-|---|---|---|---|
-| TC-TRIP-01 | Create trip với tên hợp lệ | FR-TRIP-01, US-01 | Trip + owner membership tạo atomic. |
-| TC-TRIP-02 | Create thiếu tên | FR-TRIP-01 | Field error; không tạo record rác. |
-| TC-TRIP-03 | Mở invite active và join display name | FR-TRIP-03/04, US-04/05 | Một membership active; redirect overview. |
-| TC-TRIP-04 | Redeem cùng invite hai lần cùng identity | FR-TRIP-04, BR-12 | Idempotent; không duplicate. |
-| TC-TRIP-05 | Revoked/expired invite | FR-SHARE-02, BR-12 | Reject, không leak member list. |
-| TC-TRIP-06 | Merge virtual member với Google identity | FR-AUTH-01, BR-09 | Merge atomic, không duplicate expense participation. |
-| TC-TRIP-07 | Trip đạt member limit | DEC-PRD-07 | Message giới hạn; không insert quá limit. |
+### 2.2 Ý tưởng và bình chọn
 
-### Poll và itinerary
+| ID | Test | Yêu cầu | Loại | Ưu tiên |
+|----|------|---------|------|---------|
+| T-B01 | Thêm ý tưởng, hiển thị cho mọi thành viên | FR-09 | E | P0 |
+| T-B02 | Mỗi người tối đa 1 vote mỗi ý tưởng; bấm lại bỏ vote | FR-10 | I | P0 |
+| T-B03 | Không vote hộ người khác (RLS) | FR-10 | R | P0 |
+| T-B04 | Vote của người này xuất hiện ở người kia dưới 3 giây | NFR-04 | E | P1 |
+| T-B05 | Poll ngày: tổng hợp đúng, phương án tốt nhất nổi bật | FR-11 | U, E | P0 |
+| T-B06 | Chốt kèo khóa vote; chỉ owner chốt/mở lại | FR-12 | I, R | P0 |
 
-| ID | Scenario | Liên kết | Expected |
-|---|---|---|---|
-| TC-POLL-01 | Create destination/date poll ≥2 options | FR-POLL-01 | Poll open và options đúng order. |
-| TC-POLL-02 | Single-choice vote rồi đổi vote | FR-POLL-02/03 | Chỉ còn lựa chọn mới. |
-| TC-POLL-03 | Member vote sau lock | FR-POLL-04, BR-11 | Server reject; UI refresh locked state. |
-| TC-POLL-04 | Owner lock và non-owner lock | FR-POLL-04 | Owner thành công; member denied. |
-| TC-ITIN-01 | Add item date-less bằng Day 1 | FR-ITIN-01/02, BR-13 | Day index đúng, item position cuối. |
-| TC-ITIN-02 | Reorder hai client stale | FR-ITIN-03, BR-10 | Một request thắng; request stale yêu cầu reload. |
-| TC-ITIN-03 | Add option poll lần hai | FR-ITIN-04 | Không duplicate theo source option. |
+### 2.3 Lịch trình
 
-### Expense và split
+| ID | Test | Yêu cầu | Loại | Ưu tiên |
+|----|------|---------|------|---------|
+| T-C01 | Thêm hoạt động vào đúng ngày, đúng thứ tự | FR-15 | E | P0 |
+| T-C02 | Hoạt động có link Maps mở được | FR-18 | E | P1 |
+| T-C03 | Tạo hoạt động từ ý tưởng đã chốt | FR-16 | I | P1 |
+| T-C04 | Sắp xếp lại (kéo thả hoặc nút) lưu và đồng bộ | FR-17 | E | P1 |
+| T-C05 | Xem lịch trình khi offline | NFR-10 | E | P0 |
 
-| ID | Scenario | Liên kết | Expected |
-|---|---|---|---|
-| TC-EXP-01 | Equal 100000 cho 3 người | FR-EXP-03/05, ROUND-04, ALG-02 | 33334/33333/33333; tổng 100000. |
-| TC-EXP-02 | Exact sum thiếu/thừa | FR-EXP-03, BR-06 | Reject, nêu chênh lệch. |
-| TC-EXP-03 | Percentage không bằng 100% | BR-05 | Reject trước server và server. |
-| TC-EXP-04 | Shares 1:2 với 100000 | FR-EXP-03, ALG-07 | 33333/66667. |
-| TC-EXP-05 | Payer không nằm trong participants | FR-EXP-02, ALG-13 | Save hợp lệ; balance tính đúng. |
-| TC-EXP-06 | Không có participant/amount âm | BR-08, BR-14 | Reject. |
-| TC-EXP-07 | Duplicate submit do retry | FR-REAL-02, architecture idempotency | Chỉ một expense. |
-| TC-EXP-08 | Edit sau settlement marked_paid | FR-EXP-04, BR-03 | Revision + warning/dispute. |
-| TC-EXP-09 | Void expense | FR-EXP-07 | Không tính settlement mới; audit giữ lại. |
-| TC-EXP-10 | Draft đóng sheet và quay lại | FR-EXP-06, NFR-OFF-01 | Draft giữ đúng user/trip. |
+### 2.4 Chi phí và dự toán
 
-### Settlement và VietQR
+| ID | Test | Yêu cầu | Loại | Ưu tiên |
+|----|------|---------|------|---------|
+| T-D01 | Thêm khoản chi chia đều, mặc định người trả là mình, chia cho tất cả | FR-22, FR-23 | E | P0 |
+| T-D02 | Các test chia tiền TC-01 đến TC-09 (xem `08`) | FR-23 đến FR-26 | U | P0 |
+| T-D03 | Chia theo số tiền sai tổng bị chặn kèm thông báo thiếu/thừa | FR-24 | U, E | P0 |
+| T-D04 | Khoản chi có tổng phần chia khác tổng tiền bị DB từ chối | BR-02, NFR-15 | I | P0 |
+| T-D05 | Gửi trùng `client_id` không tạo bản sao | FR-22, NFR-11 | I | P0 |
+| T-D06 | Sửa khoản chi tăng `version`, ghi lịch sử | FR-27 | I | P0 |
+| T-D07 | Hai người sửa cùng lúc: người sau nhận xung đột | EC-05 | I | P0 |
+| T-D08 | Số tiền ngoài [1; 1.000.000.000] bị từ chối | EC-07 | I | P0 |
+| T-D09 | Người trả không tham gia khoản chi | EC-08 | U, I | P1 |
+| T-D10 | Dự toán và thanh tiến độ đúng | FR-20 | E | P1 |
+| T-D11 | Thành viên đề nghị chỉnh phần chia | FR-28 | E | P2 |
+| T-D12 | Ghi chi tiêu offline, đồng bộ lại không trùng | NFR-11 | E | P2 |
 
-| ID | Scenario | Liên kết | Expected |
-|---|---|---|---|
-| TC-SET-01 | Tổng balances bằng 0 | FR-SET-01, ALG invariants | Không có rounding drift. |
-| TC-SET-02 | Một debtor, hai creditor | FR-SET-02, ALG-09 | Hai transfer đúng amount. |
-| TC-SET-03 | Hai debtor, hai creditor | FR-SET-02, ALG-10 | Greedy deterministic, tất cả residual 0. |
-| TC-SET-04 | Tất cả balance zero | ALG-11 | No-op/completed theo rule. |
-| TC-SET-05 | Mark paid bởi debtor | FR-SET-04 | Chỉ status marked_paid, chưa confirmed. |
-| TC-SET-06 | Confirm bởi creditor | FR-SET-04 | Status confirmed_received + actor/time. |
-| TC-SET-07 | Member khác cố confirm | DB-RLS-04 | Reject. |
-| TC-SET-08 | Expense revision sau snapshot | FR-SET-07, ALG-15 | needs_recalculation, transfer cũ không biến mất. |
-| TC-QR-01 | Profile đầy đủ | FR-SET-05/06, ALG-16 | QR/payload có amount/addInfo, không log secret. |
-| TC-QR-02 | Thiếu bankBin/account | FR-SET-06 | Không render QR; fallback copy. |
-| TC-QR-03 | Amount immutable | FR-SET-06 | QR lấy amount snapshot, không cho sửa client. |
+### 2.5 Quyết toán
 
-### RLS và privacy
+| ID | Test | Yêu cầu | Loại | Ưu tiên |
+|----|------|---------|------|---------|
+| T-E01 | Test số dư và tối giản nợ TC-10 đến TC-18 (xem `08`) | FR-29, FR-30 | U | P0 |
+| T-E02 | Property-based PT-01 đến PT-06 | NFR-15 | U, I | P0 |
+| T-E03 | `get_trip_balances` (SQL) khớp bản tính ở client trên dữ liệu seed | PT-06 | I | P0 |
+| T-E04 | Mã VietQR có CRC đúng; chuỗi đúng định dạng TLV | FR-31 | U | P0 |
+| T-E05 | Quét QR bằng app của ít nhất 4 ngân hàng khác nhau, số tiền và nội dung điền đúng | FR-31 | Thủ công | P0 |
+| T-E06 | Người không nợ không lấy được thông tin ngân hàng qua `get_payment_target` | NFR-08 | R, I | P0 |
+| T-E07 | Không thể SELECT trực tiếp `member_bank_accounts` của người khác | NFR-08 | R | P0 |
+| T-E08 | Đánh dấu đã chuyển rồi người nhận xác nhận: số dư đổi | FR-33 | I, E | P0 |
+| T-E09 | Chưa xác nhận: số dư DB chưa đổi, gợi ý hiển thị "chờ xác nhận" | D-28, D-34 | I | P1 |
+| T-E10 | Chốt quyết toán chặn sửa khoản chi; mở khóa thì sửa được và tính lại | FR-34, EC-02 | I, E | P1 |
+| T-E11 | Người nhận chưa nhập thông tin: hiển thị thông báo, không lỗi | FR-32 | E | P0 |
+| T-E12 | Thông tin ngân hàng không xuất hiện trong log hoặc báo cáo Sentry | NFR-08, NFR-18 | Thủ công, I | P0 |
 
-| ID | Scenario | Liên kết | Expected |
-|---|---|---|---|
-| TC-RLS-01 | User A query Trip B | DB-RLS-01, NFR-SEC-01 | Empty/denied, không leak. |
-| TC-RLS-02 | Member update owner-only poll lock | DB-RLS-02 | Denied. |
-| TC-RLS-03 | User A insert expense với trip_id B | FR-PRIV-01 | Denied dù client gửi role hợp lệ. |
-| TC-RLS-04 | Payment profile ngoài context | DB-RLS-05 | Mask/denied. |
-| TC-RLS-05 | Raw bank data xuất hiện Sentry/analytics | NFR-SEC-03 | Automated redaction test pass. |
-| TC-RLS-06 | Invite token đoán tuần tự | NFR-SEC-02 | Token không enumerable; rate limit. |
+### 2.6 Phi chức năng
 
-## 4. E2E scenarios bắt buộc
+| ID | Test | Yêu cầu | Ưu tiên |
+|----|------|---------|---------|
+| T-N01 | LCP p75 dưới 2,5 giây trên mô phỏng 4G | NFR-01 | P1 |
+| T-N02 | JS ban đầu dưới 200 KB gzip | NFR-03 | P1 |
+| T-N03 | Mọi bảng đều có RLS bật (truy vấn catalog) | NFR-05 | P0 |
+| T-N04 | Giới hạn tốc độ tham gia bằng mã | NFR-06 | P1 |
+| T-N05 | axe: không có lỗi nghiêm trọng ở màn hình chính; tương phản đạt 4.5:1 | NFR-12 | P1 |
+| T-N06 | Xóa dữ liệu cá nhân (`delete_my_data`) hoạt động | NFR-09 | P1 |
+| T-N07 | Cron giữ Supabase hoạt động và backup hằng tuần chạy được, có thử khôi phục | NFR-16 | P0 |
 
-| ID | Flow | Pass condition |
-|---|---|---|
-| E2E-01 | Creator tạo trip trên browser A, member join trên browser B | Hai session thấy cùng trip/members. |
-| E2E-02 | Tạo poll, vote bằng 3 member, owner lock | Result/locked state nhất quán sau reload. |
-| E2E-03 | Thêm itinerary item và reorder | Mobile layout giữ order sau refresh. |
-| E2E-04 | Tạo 3 expense bằng equal/exact/percentage | Preview và settlement khớp expected fixtures. |
-| E2E-05 | Mở settlement, copy transfer, mark paid, confirm | Timeline status đúng actor. |
-| E2E-06 | QR thiếu profile và đủ profile | Fallback/QR đúng, warning hiển thị. |
-| E2E-07 | Refresh khi realtime disconnect | Snapshot refetch, không duplicate. |
-| E2E-08 | Anonymous upgrade Google mock/fixture | Membership không mất sau upgrade. |
+---
 
-## 5. Checklist QA thủ công trên thiết bị thật
+## 3. Luồng E2E vàng (Playwright)
 
-### iOS Safari
+| ID | Luồng | Ghi chú |
+|----|-------|---------|
+| E2E-01 | Organizer tạo chuyến, sao chép link; người thứ hai mở link ở ngữ cảnh trình duyệt khác, vào nhóm | Hai ngữ cảnh = hai người |
+| E2E-02 | Hai người cùng ghi chi tiêu; cả hai thấy số dư giống nhau dưới 3 giây | Realtime |
+| E2E-03 | Quyết toán: gợi ý đúng, đánh dấu đã chuyển, xác nhận, số dư về 0 | |
+| E2E-04 | Thành viên ảo được nhận qua "Tôi là…" | |
+| E2E-05 | Vote và poll ngày, chốt kèo | |
+| E2E-06 | Mất phiên và khôi phục | |
+| E2E-07 | Offline: mở lịch trình khi tắt mạng | |
+| E2E-08 | Người ngoài mở link đã đổi mã: thấy thông báo, không lộ dữ liệu | |
 
-- Mở invite từ Messenger/Zalo, back/forward không mất context.
-- Bàn phím số không che amount/save; decimal key không tạo giá trị sai.
-- Bottom sheet vuốt/đóng, focus và safe area đúng với notch.
-- Share sheet/Web Share và copy link hoạt động.
-- Add to Home Screen/PWA launch giữ session hợp lệ.
-- Tắt mạng: badge stale, không giả success; bật lại refetch.
-- QR scan bằng banking app thật nếu được phép dùng test profile; kiểm tra copy fallback.
+---
 
-### Android Chrome
+## 4. Checklist QA thủ công trên điện thoại thật
 
-- Join link mở đúng khi browser cold start.
-- Back gesture/Android back đóng sheet/dialog đúng thứ tự.
-- Numeric keyboard, autofill và long display name không phá layout.
-- Realtime thay đổi từ browser khác cập nhật hoặc có refresh rõ.
-- PWA install prompt/icon/launch; service worker update không xóa draft.
-- Camera/QR share permission không làm app crash.
+Thiết bị tối thiểu: **một iPhone** (iOS Safari, ưu tiên 16.4 trở lên), **một Android tầm trung** (Chrome). Nếu có, thêm một máy Android cũ hoặc màn hình nhỏ (360 px).
 
-### Cả hai
+| # | Hạng mục | iOS Safari | Android Chrome |
+|---|----------|:---------:|:--------------:|
+| 1 | Mở link mời từ Zalo/Messenger (trình duyệt trong app) và từ trình duyệt ngoài | ☐ | ☐ |
+| 2 | Vào nhóm không đăng ký, dưới 20 giây | ☐ | ☐ |
+| 3 | Bàn phím số hiện đúng ở ô số tiền; định dạng `1.234.567₫` | ☐ | ☐ |
+| 4 | Bottom sheet không bị bàn phím che nút Lưu | ☐ | ☐ |
+| 5 | Vùng chạm đủ lớn, không bấm nhầm | ☐ | ☐ |
+| 6 | Vote một chạm, thấy cập nhật từ máy khác | ☐ | ☐ |
+| 7 | Kéo thả lịch trình bằng cảm ứng, không xung đột với cuộn trang | ☐ | ☐ |
+| 8 | Mở QR thanh toán, quét bằng ít nhất 4 app ngân hàng khác nhau (ghi tên app) | ☐ | ☐ |
+| 9 | Sao chép số tài khoản và nội dung chuyển khoản | ☐ | ☐ |
+| 10 | Cài về màn hình chính; mở ở chế độ standalone | ☐ | ☐ |
+| 11 | Tắt mạng: xem lịch trình và số dư; dải "Đang offline" hiện | ☐ | ☐ |
+| 12 | Mạng yếu (giả lập 3G): vẫn dùng được, có skeleton | ☐ | ☐ |
+| 13 | Xoay ngang, cỡ chữ hệ thống lớn: không vỡ giao diện | ☐ | ☐ |
+| 14 | Xóa dữ liệu trình duyệt rồi mở lại link: khôi phục bằng "Tôi là…" | ☐ | ☐ |
+| 15 | Chế độ tiết kiệm pin/dữ liệu: không mất kết nối realtime quá lâu | ☐ | ☐ |
+| 16 | Hiển thị tiếng Việt có dấu đúng ở mọi màn hình | ☐ | ☐ |
 
-- Font tiếng Việt, dấu và format `1.200.000₫`.
-- Touch target ≥44px; focus visible trên keyboard.
-- Contrast/status không chỉ dựa vào màu.
-- Lỗi mạng, permission denied, invite hết hạn đều có hướng dẫn.
-- Không hiển thị account number đầy đủ ngoài màn hình cần thiết.
+Ghi mỗi lỗi: thiết bị, hệ điều hành, các bước, ảnh/quay màn hình.
 
-## 6. Tiêu chí chấp nhận MVP
+---
 
-| Nhóm | Tiêu chí |
-|---|---|
-| Core flow | E2E-01 → E2E-05 pass trên Chrome + ít nhất một iOS/Android thật. |
-| Money | Unit/integration split + settlement đạt 100% cases trong tài liệu; invariant không fail. |
-| Security | TC-RLS-01..06 pass; không có cross-trip leak hoặc raw bank secret trong logs. |
-| Performance | Invite/overview p95 mục tiêu <2 giây trong test dataset full-trip, không có request dài bất thường. |
-| Accessibility | Keyboard/semantic label/focus/bottom sheet checklist pass; không có blocker axe ở core flow. |
-| Reliability | Retry/refresh/realtime disconnect không duplicate expense hoặc transfer. |
-| Privacy | Analytics event allowlist review; privacy copy và delete/recovery guidance có mặt. |
-| Scope | Non-goals không xuất hiện như dependency bắt buộc; app chạy core flow trong free-tier budget. |
-| Release | P0=0, P1=0 hoặc có owner/date/workaround được chấp nhận; rollback đã thử ở staging. |
+## 5. Tiêu chí chấp nhận MVP
 
-## 7. Checklist trước khi ra mắt
+MVP đủ điều kiện **thử nghiệm kín** khi:
 
-- [ ] Production env variables và Supabase project đã kiểm tra.
-- [ ] Migration backup/rollback note và seed staging đã chạy.
-- [ ] RLS policy không còn `using (true)` trên private table.
-- [ ] Invite token, rate limit và member/expense limits hoạt động.
-- [ ] Sentry scrubber và analytics allowlist đã test.
-- [ ] Privacy/terms tối thiểu và contact support hiển thị ở landing/account.
-- [ ] PWA manifest/icons/service worker chạy trên iOS/Android.
-- [ ] VietQR provider/danh sách bank BIN có owner cập nhật; fallback copy đã test.
-- [ ] E2E smoke pass sau production deploy.
-- [ ] Có runbook xử lý sai settlement, revoke invite và data deletion request.
-- [ ] Pilot feedback form và event dashboard sẵn sàng.
+| # | Tiêu chí |
+|---|----------|
+| 1 | Mọi test **P0** ở mục 2 đạt |
+| 2 | Không còn lỗi nghiêm trọng (mất dữ liệu, sai tiền, lộ dữ liệu) |
+| 3 | 100% bảng có RLS và test "người ngoài" đạt |
+| 4 | Thông tin ngân hàng chỉ lấy được qua RPC có kiểm quyền |
+| 5 | Thuật toán chia và tối giản nợ: toàn bộ TC và PT đạt; `Σ net = 0` trong mọi test |
+| 6 | QR quét được trên ít nhất 4 app ngân hàng (ghi danh sách) |
+| 7 | LCP p75 dưới 2,5 giây, JS ban đầu dưới 200 KB gzip |
+| 8 | Checklist QA thủ công ở mục 4 đạt trên cả iOS và Android |
+| 9 | Một nhóm nội bộ (nhóm bạn của chính bạn) dùng thật cho một chuyến đi và quyết toán thành công |
+
+### Checklist trước khi ra mắt công khai
+
+| # | Hạng mục |
+|---|----------|
+| 1 | Hosting phù hợp điều khoản thương mại nếu có nguồn thu (xem D-01, D-20) |
+| 2 | Cron giữ Supabase hoạt động và backup hằng tuần chạy; đã thử khôi phục từ backup |
+| 3 | Theo dõi dung lượng DB, MAU và kết nối realtime; có cảnh báo ở 80% |
+| 4 | Chính sách riêng tư và điều khoản bằng tiếng Việt; chức năng xóa dữ liệu |
+| 5 | Sentry bật và đã lọc dữ liệu nhạy cảm |
+| 6 | Trang giới thiệu có SEO cơ bản; trang chuyến `noindex` |
+| 7 | Dữ liệu đối thủ và số liệu trong thông điệp quảng bá đã kiểm chứng lại |
+| 8 | Kênh nhận phản hồi (biểu mẫu hoặc email) hoạt động |
+| 9 | Đã chạy toàn bộ E2E trên bản triển khai thật |
+
+---
 
 ## Câu hỏi mở
 
-1. Dùng Playwright device emulation đủ cho CI hay bắt buộc có real-device cloud/device lab?
-2. Coverage threshold cụ thể cho mọi module là bao nhiêu ngoài money logic ≥95%?
-3. Có bật visual regression screenshot cho wireframe/component chính không?
-4. Ai được phép dùng bank profile test và QR scan trong QA; có cần tài khoản ngân hàng sandbox không?
-5. Release blocker nào cho phép workaround trong closed pilot?
+1. Có sẵn những thiết bị thật nào để test (đời iOS, hãng Android)? Nếu thiếu, dùng dịch vụ test thiết bị nào (có gói miễn phí)?
+2. Test quét QR cần tài khoản ở 4 ngân hàng khác nhau; ai có sẵn? Có thể nhờ bạn bè trong thử nghiệm kín.
+3. Có dùng pgTAP hay tự viết test RLS bằng Vitest đặt vai qua JWT giả? Cái nào dễ duy trì hơn cho một người?
+4. Mức độ chấp nhận cho test E2E không ổn định (flaky) với realtime là gì (thử lại bao nhiêu lần)?
+5. Ngưỡng cảnh báo ở 80% cho DB/MAU/realtime gửi qua kênh nào (email, Telegram)?
 
 ## Quyết định cần chốt
 
-| Mã | Quyết định | Đề xuất mặc định |
-|---|---|---|
-| DEC-TEST-01 | Test priority | Money + RLS + join là P0; visual polish không được che lấp ba rủi ro này. |
-| DEC-TEST-02 | Device gate | CI emulation mỗi PR; real iOS Safari/Android Chrome trước mỗi release candidate. |
-| DEC-TEST-03 | Data | Chỉ synthetic data trong test/preview; không dùng bank data thật. |
-| DEC-TEST-04 | E2E | Giữ một smoke suite <5 phút và full suite nightly/RC. |
+| ID | Quyết định | Đề xuất |
+|----|-----------|---------|
+| D-37 | Công cụ test RLS | Vitest + vai/JWT giả trên Supabase local |
+| D-38 | Độ phủ bắt buộc | 100% nhánh cho `lib/settlement` và `lib/vietqr`; không đặt ngưỡng chung |
+| D-39 | Thiết bị tối thiểu | 1 iPhone + 1 Android tầm trung |
+| D-40 | Số app ngân hàng phải quét thử | Tối thiểu 4 |

@@ -1,334 +1,327 @@
-# Tripmate — UX và Screen Specification
+# Tripmate — Thiết kế UX và Màn hình
 
-**Mục đích:** Đặc tả nguyên tắc UX, điều hướng, màn hình, trạng thái và các pattern UI để PRD có thể chuyển thành thiết kế/implementation nhất quán.
+- **Mục đích:** Định nghĩa nguyên tắc thiết kế, sơ đồ điều hướng, danh sách màn hình, wireframe, luồng đặc biệt, design tokens và nội dung giao diện tiếng Việt.
+- **Phiên bản:** 0.1
+- **Cập nhật lần cuối:** 18/11/2026
 
-**Phiên bản:** 0.1
+## Tóm tắt
 
-**Cập nhật lần cuối:** 2026-11-17
+Tripmate được thiết kế mobile-first, vào là dùng (không đăng nhập trước), nhập liệu nhanh bằng bottom sheet và các giá trị mặc định thông minh. Có 17 màn hình (S01–S17). Điều hướng chính của một chuyến là 5 tab: Tổng quan, Ý tưởng, Lịch trình, Chi phí, Quyết toán. Phong cách: tối giản, nhiều khoảng trắng, một màu nhấn, tiền luôn rõ ràng và dễ đọc.
 
-**Tóm tắt:** Tripmate ưu tiên mobile-first, join trước đăng nhập, thao tác nhanh và nội dung có thể giải thích. Navigation chính nằm trong context của một trip; các hành động thường xuyên như thêm expense dùng bottom sheet, còn việc có hậu quả như khóa poll, void expense và xác nhận thanh toán dùng confirm rõ ràng.
+---
 
 ## 1. Nguyên tắc thiết kế
 
-| ID | Nguyên tắc | Quy tắc áp dụng |
-|---|---|---|
-| UX-PR-01 | Mobile-first | Thiết kế từ viewport 360px; CTA nằm trong vùng ngón tay; desktop chỉ mở rộng layout. |
-| UX-PR-02 | Không bắt đăng nhập trước | Join/create dùng anonymous identity; prompt Google chỉ xuất hiện sau khi user đã tạo giá trị. |
-| UX-PR-03 | Nhập liệu nhanh | Quick add, numeric keyboard, default payer/current member, preset category, progressive disclosure. |
-| UX-PR-04 | Luôn giải thích aggregate | Balance/total/transfer đều drill-down được về expense nguồn. |
-| UX-PR-05 | Trạng thái rõ hơn màu | Dùng label/icon/text cùng màu; ví dụ `Đang chờ`, `Đã đánh dấu đã trả`, `Đã xác nhận`. |
-| UX-PR-06 | Không gây bất ngờ | Lock poll, void expense, revoke invite và close trip đều có hậu quả hiển thị trước khi xác nhận. |
-| UX-PR-07 | Tôn trọng ngữ cảnh xã hội | Dùng “Bạn cần trả”, “Bạn sẽ nhận”, tránh “con nợ”; message share lịch sự, không gây áp lực. |
-| UX-PR-08 | Offline có thể hiểu | Badge `Ngoại tuyến`/`Dữ liệu cập nhật lúc...`; không tuyên bố save nếu server chưa xác nhận. |
-| UX-PR-09 | Private by default | Bank details không nằm trong overview/activity; QR hiển thị sau action chủ động. |
+| ID | Nguyên tắc | Hệ quả cụ thể |
+|----|-----------|---------------|
+| UX-01 | **Mobile-first, một tay** | Hành động chính nằm vùng ngón cái (nửa dưới màn hình); nút chạm tối thiểu 44×44 px |
+| UX-02 | **Không bắt đăng nhập trước** | Mọi thứ hoạt động với phiên ẩn danh; "Liên kết Google" chỉ gợi ý sau khi người dùng đã có giá trị (sau khoản chi đầu tiên) |
+| UX-03 | **Nhập liệu nhanh** | Mặc định thông minh: người trả = mình, chia = đều cho tất cả; số tiền bàn phím số; ghi nhớ lựa chọn gần nhất |
+| UX-04 | **Tiền phải minh bạch** | Mọi số dư truy ngược về khoản chi; hiển thị phép tính khi chia lẻ |
+| UX-05 | **Một việc chính mỗi màn hình** | Mỗi màn có một CTA chính nổi bật |
+| UX-06 | **Trạng thái rõ ràng** | Mọi màn hình có đủ trạng thái loading, rỗng, lỗi, thành công |
+| UX-07 | **Không làm người dùng xấu hổ** | Không bảng xếp hạng người nợ; nhắc nhở trung tính |
+| UX-08 | **Chạy tốt khi mạng yếu** | Cập nhật lạc quan, skeleton, dữ liệu đã tải xem được offline |
 
-## 2. Sơ đồ điều hướng
+---
+
+## 2. Sơ đồ điều hướng (Sitemap)
 
 ```mermaid
 flowchart TD
-    H[SCR-HOME<br/>Trang chủ] --> C[SCR-CREATE<br/>Tạo chuyến đi]
-    H --> J[SCR-JOIN<br/>Tham gia bằng link]
-    H --> A[SCR-ACCOUNT<br/>Tài khoản & khôi phục]
-    C --> O[SCR-OVERVIEW<br/>Tổng quan trip]
-    J --> O
-    O --> P[SCR-POLL<br/>Bình chọn]
-    P --> PR[SCR-POLL-RESULT<br/>Kết quả/chốt]
-    O --> I[SCR-ITINERARY<br/>Lịch trình]
-    I --> II[SCR-ITINERARY-ITEM<br/>Thêm/sửa hoạt động]
-    O --> B[SCR-BUDGET<br/>Dự toán]
-    O --> EL[SCR-EXPENSE-LIST<br/>Danh sách chi tiêu]
-    O --> ES[SCR-EXPENSE-SHEET<br/>Thêm chi tiêu nhanh]
-    EL --> ED[SCR-EXPENSE-DETAIL<br/>Chi tiết & breakdown]
-    O --> S[SCR-SETTLEMENT<br/>Quyết toán]
-    S --> T[SCR-TRANSFER<br/>Chi tiết chuyển khoản]
-    T --> Q[SCR-VIETQR<br/>VietQR]
-    O --> M[SCR-MEMBERS<br/>Thành viên & lời mời]
-    M --> TS[SCR-TRIP-SETTINGS<br/>Cài đặt trip]
+    Home[S01 Trang chủ] --> Create[S02 Tạo chuyến]
+    Home --> Trip[S05 Trang chuyến]
+    Link[Link mời] --> Join[S03 Tham gia chuyến]
+    Join --> Claim[S04 Chọn danh tính]
+    Join --> Trip
+    Claim --> Trip
+    Trip --> Overview[Tab Tổng quan]
+    Trip --> Ideas[Tab Ý tưởng S06]
+    Trip --> Itin[Tab Lịch trình S08]
+    Trip --> Cost[Tab Chi phí S09]
+    Trip --> Settle[Tab Quyết toán S12]
+    Ideas --> Poll[S07 Poll ngày]
+    Cost --> Add[S10 Thêm chi tiêu]
+    Cost --> Detail[S11 Chi tiết chi tiêu]
+    Settle --> Pay[S13 Thanh toán QR]
+    Overview --> Members[S14 Thành viên và mời]
+    Overview --> Settings[S15 Cài đặt chuyến]
+    Home --> Profile[S16 Hồ sơ và tài khoản]
+    Profile --> Upgrade[S17 Liên kết Google]
 ```
+
+---
 
 ## 3. Danh sách màn hình
 
-| ID | Màn hình | Mục đích | Thành phần UI chính | Dữ liệu | Hành động chính |
-|---|---|---|---|---|---|
-| SCR-HOME | Trang chủ | Tạo/mở trip gần đây | Logo, CTA tạo, input join code, danh sách trip | Trip user có quyền xem, pending invites | Tạo, join, mở trip, account |
-| SCR-CREATE | Tạo chuyến đi | Tạo trip tối thiểu | Name, destination, date range, display name | Form draft | Tạo trip, hủy |
-| SCR-JOIN | Tham gia bằng link | Xác nhận context và join | Trip preview, creator, display name, privacy note | Public trip metadata, invite status | Join, đổi tên, thoát |
-| SCR-OVERVIEW | Tổng quan trip | Next action và trạng thái chung | Header, progress, next event, balance card, tabs, quick add | Trip, members, poll summary, itinerary next, user balance | Share, quick add, mở module |
-| SCR-INVITE | Mời thành viên | Tạo/chia sẻ invite | Link, QR, expiry, copy/share, revoke | Invite metadata | Copy, share, revoke |
-| SCR-MEMBERS | Thành viên | Quản lý joined/virtual | Member list, role badge, pending, add virtual | Members, membership status | Add virtual, role, deactivate |
-| SCR-POLL | Tạo/sửa poll | Thu thập lựa chọn | Title, type, options, deadline tùy chọn | Poll draft/options | Save, add option, cancel |
-| SCR-POLL-RESULT | Kết quả poll | Xem vote và lock | Option bars, voters tùy privacy, lock CTA | Votes, status, winner | Vote, lock, reopen nếu được |
-| SCR-ITINERARY | Lịch trình | Xem/sắp xếp theo ngày | Day tabs, item cards, today marker, add CTA | Itinerary days/items | Add, edit, reorder, share |
-| SCR-ITINERARY-ITEM | Item form | Tạo/sửa hoạt động | Title, time, location, note, category | Item draft, source poll | Save, delete/void |
-| SCR-BUDGET | Dự toán | So sánh estimate/actual | Category rows, total, progress | Budget estimates, expense aggregates | Add/edit estimate |
-| SCR-EXPENSE-LIST | Chi tiêu | Xem expense feed | Filter category/payer/date, cards | Expense list, sync state | Add, open detail, filter |
-| SCR-EXPENSE-SHEET | Bottom sheet thêm chi tiêu | Ghi expense nhanh | Amount, title, payer, participants, split selector, preview | Draft, members | Save, expand advanced, discard |
-| SCR-EXPENSE-DETAIL | Chi tiết expense | Giải thích một khoản | Payer, amount, participants, breakdown, history | Expense, shares, revision | Edit/void nếu có quyền |
-| SCR-SETTLEMENT | Quyết toán | Xem net và transfer | “Bạn sẽ nhận/trả”, transfer list, totals, stale warning | Balances, settlement snapshot | Open transfer, recalculate, close |
-| SCR-TRANSFER | Chi tiết transfer | Hoàn tất một nghĩa vụ | From/to, amount, breakdown, payment instructions, status timeline | Transfer, recipient bank summary | Copy, show QR, marked paid/confirm |
-| SCR-VIETQR | QR thanh toán | Hiển thị QR an toàn | QR image, bank name masked, amount, addInfo, warning | Ephemeral QR payload | Show/hide, download/share, copy |
-| SCR-TRIP-SETTINGS | Cài đặt trip | Quyền, archive, delete request | Role, limits, privacy, danger zone | Trip config, audit summary | Revoke, archive, request delete |
-| SCR-ACCOUNT | Tài khoản | Nâng cấp/khôi phục identity | Anonymous status, Google CTA, data export/delete | Auth identity, sessions | Link account, sign out |
-| SCR-RECOVERY | Khôi phục | Giải thích session mất | Recovery instructions, invite/help | Session state | Sign in, contact owner |
-| SCR-FEEDBACK | Feedback | Thu feedback ngắn | Rating, category, text, consent | Anonymous event context | Submit, dismiss |
+Trạng thái: **L** loading, **E** rỗng (empty), **R** lỗi (error), **S** thành công.
 
-## 4. Trạng thái bắt buộc của màn hình
+| ID | Màn hình | Mục đích | Thành phần UI chính | Dữ liệu hiển thị | Hành động | Trạng thái |
+|----|----------|----------|---------------------|------------------|-----------|------------|
+| S01 | Trang chủ | Xem và vào các chuyến của mình | Danh sách thẻ chuyến, nút Tạo chuyến | Tên, ngày, số thành viên, số dư của mình | Mở chuyến, tạo chuyến | L: skeleton thẻ. E: "Chưa có chuyến nào, tạo chuyến đầu tiên". R: thử lại |
+| S02 | Tạo chuyến | Tạo chuyến nhanh | Ô tên (bắt buộc), điểm đến, ngày, emoji | — | Tạo | L: nút xoay. R: lỗi dưới ô. S: chuyển vào S05 |
+| S03 | Tham gia chuyến | Bước đầu tiên của người được mời | Tên chuyến, người mời, số thành viên, ô tên hiển thị | Tên chuyến, tên owner | Vào nhóm | L: skeleton. R: "Link hết hiệu lực". S: vào S05 |
+| S04 | Chọn danh tính | Nhận lại thành viên ảo hoặc khôi phục | Danh sách "Tôi là…", nút "Tôi là người mới" | Thành viên chưa gắn thiết bị | Chọn | E: bỏ qua màn này. R: "đã được nhận" |
+| S05 | Trang chuyến (Tổng quan) | Trung tâm của chuyến | Header, 5 tab, thẻ "Việc cần làm", tóm tắt | Chốt kèo, lịch gần nhất, số dư của mình | Chuyển tab, Mời | L: skeleton. R: lỗi mạng. E: gợi ý bước tiếp theo |
+| S06 | Ý tưởng và bình chọn | Đề xuất và vote | Bộ lọc loại, thẻ ý tưởng, nút vote, FAB thêm | Tên, số vote, ai vote, trạng thái chốt | Vote, thêm, chốt kèo | L: skeleton. E: "Chưa có ý tưởng. Thêm điểm đến đầu tiên" |
+| S07 | Poll ngày | Chốt ngày đi | Lưới ngày × người, nút rảnh/có thể/bận, tổng hợp | Phương án ngày, câu trả lời | Trả lời, thêm phương án, chốt | E: "Thêm phương án ngày" |
+| S08 | Lịch trình | Xem và sửa theo ngày | Tab ngày, danh sách hoạt động, tay cầm kéo thả | Giờ, tên, địa điểm, ghi chú | Thêm, sửa, sắp xếp | E: "Ngày này chưa có gì" |
+| S09 | Chi phí | Theo dõi chi tiêu và dự toán | Tổng đã chi, thanh dự toán theo hạng mục, danh sách khoản chi | Khoản chi, người trả, số tiền | Thêm chi tiêu, lọc | E: "Chưa có khoản chi" |
+| S10 | Thêm chi tiêu (bottom sheet) | Nhập chi tiêu nhanh | Số tiền, tên, người trả, người tham gia, kiểu chia, hạng mục, ngày | Tổng kiểm tra phần chia | Lưu | R: tổng chia sai, hiển thị còn thiếu/thừa |
+| S11 | Chi tiết chi tiêu | Xem và sửa một khoản | Thông tin, bảng chia, lịch sử sửa | Ai trả, mỗi người chịu bao nhiêu | Sửa, xóa, đề nghị chỉnh | R: xung đột phiên bản |
+| S12 | Quyết toán | Xem số dư và cách thanh toán | Số dư từng người, danh sách giao dịch đề xuất, trạng thái | Số dư, giao dịch | Thanh toán, đánh dấu, chốt | E: "Chưa có gì để quyết toán" |
+| S13 | Thanh toán QR | Chuyển khoản dễ | QR lớn, số tiền, tên người nhận, số tài khoản, nút sao chép | Thông tin nhận tiền | Sao chép, đã chuyển | E: "Người nhận chưa có thông tin" và nút nhắc |
+| S14 | Thành viên và mời | Mời và quản lý | Link, QR, danh sách thành viên, thêm thành viên ảo | Tên, trạng thái | Sao chép link, đổi mã, thêm/xóa | — |
+| S15 | Cài đặt chuyến | Cấu hình | Tên, ngày, lưu trữ, xóa | — | Sửa, lưu trữ, xóa | — |
+| S16 | Hồ sơ và tài khoản | Tên hiển thị, thông tin nhận tiền | Tên, ngân hàng, số tài khoản | Thông tin của mình | Lưu, xóa dữ liệu | — |
+| S17 | Liên kết Google | Giữ dữ liệu khi đổi máy | Giải thích lợi ích, nút Liên kết | — | Liên kết | R: lỗi đăng nhập |
 
-Mọi màn hình có data phải có các trạng thái sau; các trạng thái riêng được nêu trong bảng màn hình không được bỏ qua.
+---
 
-| Trạng thái | Hành vi/hiển thị |
-|---|---|
-| Loading | Skeleton giữ bố cục; không hiển thị số 0 gây nhầm là dữ liệu rỗng. |
-| Empty | Nói rõ vì sao rỗng và CTA kế tiếp, ví dụ “Chưa có khoản chi — Thêm khoản đầu tiên”. |
-| Error | Message tiếng Việt có nguyên nhân vừa đủ, retry và mã hỗ trợ nếu cần; không lộ stack trace. |
-| Offline/stale | Banner nhỏ, last synced time; mutation disabled hoặc chuyển thành draft rõ ràng. |
-| Success | Toast/inline confirmation sau server ack; focus chuyển tới nội dung vừa tạo khi phù hợp. |
-| Permission denied | Giải thích quyền không đủ và link quay về trip; không lộ dữ liệu mà user không được xem. |
+## 4. Wireframe
 
-## 5. Wireframe các màn hình chính
+Ký hiệu: `[ ]` nút, `( )` lựa chọn, `▓` thanh tiến độ.
 
-### 5.1 Trang chủ — `SCR-HOME`
+### 4.1 Trang chủ (S01)
 
-```text
-+----------------------------------+
-| Tripmate                    [☺] |
-|                                  |
-| [ + Tạo chuyến đi ]              |
-|                                  |
-| Tham gia bằng mã                 |
-| [ Nhập mã        ] [Tham gia]    |
-|                                  |
-| Chuyến đi của bạn                |
-| ┌──────────────────────────────┐ |
-| | Đà Lạt cuối tháng             | |
-| | 6 người · 12–14/12            | |
-| | Còn 2 việc cần làm      [>]   | |
-| └──────────────────────────────┘ |
-|                                  |
-| [Chuyến đi] [Mời] [Tài khoản]    |
-+----------------------------------+
+```
+┌──────────────────────────────┐
+│ Tripmate               [👤]  │
+├──────────────────────────────┤
+│ Chuyến của bạn               │
+│ ┌──────────────────────────┐ │
+│ │ 🏔 Đà Lạt 12/2026        │ │
+│ │ 6 người · 12–14/12       │ │
+│ │ Bạn được nhận 200.000₫   │ │
+│ └──────────────────────────┘ │
+│ ┌──────────────────────────┐ │
+│ │ 🌊 Vũng Tàu tháng 10     │ │
+│ │ Đã quyết toán ✓          │ │
+│ └──────────────────────────┘ │
+│                              │
+│              [ + Tạo chuyến ]│
+└──────────────────────────────┘
 ```
 
-### 5.2 Chi tiết chuyến — `SCR-OVERVIEW`
+### 4.2 Chi tiết chuyến với tab (S05)
 
-```text
-+----------------------------------+
-| [←] Đà Lạt cuối tháng    [...]  |
-| 12–14/12 · Đà Lạt                |
-| [Chia sẻ lời mời]                |
-|                                  |
-| Việc tiếp theo                   |
-| ● Chốt ngày đi             [Mở] |
-|                                  |
-| Tóm tắt                          |
-| [Đã chốt] [Lịch trình] [Chi tiền]|
-|                                  |
-| Hôm nay / Sự kiện tiếp theo      |
-| 08:00 Tập trung · Bến xe         |
-|                                  |
-| Số dư của bạn                    |
-| Bạn cần trả 250.000₫       [Xem]|
-|                                  |
-| [ + Thêm chi tiêu ]              |
-| [Tổng quan][Lịch][Chi][Quyết toán]|
-+----------------------------------+
+```
+┌──────────────────────────────┐
+│ ←  Đà Lạt 12/2026   [Mời]    │
+├──────────────────────────────┤
+│ Việc cần làm                 │
+│ • Chọn ngày rảnh  (2 ngày nữa)│
+│ • Vote điểm đến   [Vote]     │
+│                              │
+│ Đã chốt: Đà Lạt ✓            │
+│ Ngày: 12–14/12 ✓             │
+│ Đã chi: 8.450.000₫           │
+│ Bạn: +200.000₫               │
+├──────────────────────────────┤
+│ Tổng quan|Ý tưởng|Lịch|Chi|QT│
+└──────────────────────────────┘
 ```
 
-### 5.3 Bình chọn — `SCR-POLL`
+### 4.3 Bình chọn (S06)
 
-```text
-+----------------------------------+
-| [←] Chọn ngày đi                 |
-| Chọn một ngày phù hợp             |
-| Trạng thái: Đang mở              |
-|                                  |
-| ( ) 06–08/12       4 phiếu       |
-| ( ) 13–15/12       5 phiếu       |
-| ( ) 20–22/12       2 phiếu       |
-|                                  |
-| Bạn đã chọn: 13–15/12            |
-| [Đổi lựa chọn]                   |
-|                                  |
-| [Lưu lựa chọn]                   |
-|                                  |
-| Owner: [Chốt kết quả]            |
-+----------------------------------+
+```
+┌──────────────────────────────┐
+│ Ý tưởng      (Tất cả)(Điểm đến)│
+├──────────────────────────────┤
+│ ┌──────────────────────────┐ │
+│ │ Đà Lạt            ✓ Chốt │ │
+│ │ 5 vote · bạn đã vote 👍   │ │
+│ └──────────────────────────┘ │
+│ ┌──────────────────────────┐ │
+│ │ Vũng Tàu                 │ │
+│ │ 2 vote           [👍 Vote]│ │
+│ └──────────────────────────┘ │
+│  [Poll ngày]       [+ Thêm]  │
+└──────────────────────────────┘
 ```
 
-### 5.4 Lịch trình — `SCR-ITINERARY`
+### 4.4 Lịch trình (S08)
 
-```text
-+----------------------------------+
-| [←] Lịch trình              [+]  |
-| [Ngày 1] [Ngày 2] [Ngày 3]       |
-|                                  |
-| Thứ bảy · 13/12                  |
-| ┌──────────────────────────────┐ |
-| | 08:00  Tập trung              | |
-| | Bến xe Miền Đông · Linh      | |
-| └──────────────────────────────┘ |
-|              ⋮                  |
-| ┌──────────────────────────────┐ |
-| | 12:00  Ăn trưa                | |
-| | [Kéo] [Sửa]                  | |
-| └──────────────────────────────┘ |
-|                                  |
-| [ + Thêm hoạt động ]             |
-| [Tổng quan][Lịch][Chi][Quyết toán]|
-+----------------------------------+
+```
+┌──────────────────────────────┐
+│ (Ngày 1)(Ngày 2)(Ngày 3)     │
+├──────────────────────────────┤
+│ ⋮⋮ 08:00 Ăn sáng bánh căn    │
+│ ⋮⋮ 10:00 Đồi chè Cầu Đất     │
+│       📍Mở bản đồ            │
+│ ⋮⋮ 14:00 Nhận phòng homestay │
+│                              │
+│               [ + Hoạt động ]│
+└──────────────────────────────┘
 ```
 
-### 5.5 Thêm chi tiêu — `SCR-EXPENSE-SHEET`
+### 4.5 Thêm chi tiêu — bottom sheet (S10)
 
-```text
-+----------------------------------+
-| Kéo xuống để đóng                |
-| Thêm khoản chi                   |
-| [ 1.200.000             ₫ ]      |
-|                                  |
-| Khoản chi                        |
-| [Tiền phòng                  ]   |
-| Người trả                        |
-| [Huyền                       v]   |
-| Ai tham gia?                    |
-| [✓ Linh] [✓ Minh] [✓ Huyền]     |
-| Cách chia                        |
-| [Đều v]                          |
-|                                  |
-| Mỗi người: 400.000₫              |
-| [Xem chi tiết]                   |
-|                                  |
-| [Lưu khoản chi]                  |
-+----------------------------------+
+```
+┌──────────────────────────────┐
+│ ─── Thêm chi tiêu            │
+│ Số tiền                      │
+│ [        450.000 ₫        ]  │
+│ Tên khoản  [ Ăn tối nhà hàng]│
+│ Ai trả?    (Minh Anh ▾)      │
+│ Chia cho   [✓Tất cả 6 người ▾]│
+│ Kiểu chia  (Đều)(Số tiền)(%)(Phần)│
+│ → Mỗi người 75.000₫          │
+│ Hạng mục (Ăn uống ▾)  Hôm nay│
+│ [           Lưu            ] │
+└──────────────────────────────┘
 ```
 
-### 5.6 Quyết toán — `SCR-SETTLEMENT`
+### 4.6 Quyết toán (S12)
 
-```text
-+----------------------------------+
-| [←] Quyết toán                   |
-| Cập nhật: 13/12, 22:04           |
-|                                  |
-| Tóm tắt của bạn                  |
-| Bạn sẽ nhận 500.000₫             |
-|                                  |
-| Các khoản cần chuyển             |
-| ┌──────────────────────────────┐ |
-| | Minh → Huyền                  | |
-| | 250.000₫           [Chi tiết] | |
-| | Đang chờ                       | |
-| └──────────────────────────────┘ |
-| ┌──────────────────────────────┐ |
-| | Linh → Huyền                  | |
-| | 250.000₫           [Chi tiết] | |
-| └──────────────────────────────┘ |
-|                                  |
-| [Xem cách tính] [Tính lại]       |
-+----------------------------------+
+```
+┌──────────────────────────────┐
+│ Quyết toán                   │
+│ Số dư                        │
+│ Minh Anh  +1.250.000₫        │
+│ Đức       −625.000₫          │
+│ Lan       −625.000₫          │
+├──────────────────────────────┤
+│ Cần chuyển (2 giao dịch)     │
+│ Đức → Minh Anh 625.000₫      │
+│              [ Thanh toán ]  │
+│ Lan → Minh Anh 625.000₫      │
+│              [ Thanh toán ]  │
+│ Giải thích cách tính ›       │
+│        [ Chốt quyết toán ]   │
+└──────────────────────────────┘
 ```
 
-## 6. Luồng đặc biệt
+---
 
-### 6.1 Join bằng link
+## 5. Luồng đặc biệt
 
-1. User mở URL `/join/{code}`.
-2. Server kiểm tra invite status, trả public preview tối thiểu.
-3. User nhập display name; nếu anonymous session chưa có thì tạo session.
-4. Server redeem token atomically; duplicate identity trả về trip hiện tại thay vì tạo member mới.
-5. Client chuyển tới Overview, hiển thị toast “Bạn đã tham gia chuyến đi”.
-6. Nếu revoked/expired/full: không hiển thị member list; đưa nút liên hệ/copy owner message.
+### 5.1 Tham gia bằng link
 
-### 6.2 Thêm chi tiêu nhanh
+```mermaid
+flowchart TD
+    A[Mở link] --> B{Có phiên?}
+    B -->|Không| C[Tạo phiên ẩn danh nền]
+    B -->|Có| D{Đã là thành viên?}
+    C --> E[S03 nhập tên]
+    D -->|Có| H[Vào S05]
+    D -->|Chưa| E
+    E --> F{Có thành viên chưa gắn thiết bị?}
+    F -->|Có| G[S04 Tôi là...]
+    F -->|Không| I[Tạo thành viên mới]
+    G --> H
+    I --> H
+```
 
-1. Bấm FAB hoặc “+ Thêm chi tiêu” từ Overview.
-2. Bottom sheet mở với amount autofocus và numeric keyboard.
-3. Payer mặc định current user; participants mặc định active members theo business rule.
-4. Chọn split method; preview từng share cập nhật local.
-5. Validate integer, total và participants; save server.
-6. Server ack → đóng sheet, cập nhật feed/balance; lỗi → giữ draft và focus field lỗi.
+Yêu cầu: tối đa 2 thao tác (nhập tên, bấm Vào nhóm). Link không hợp lệ hiển thị thông báo rõ ràng, không lộ thông tin chuyến.
 
-### 6.3 Chọn kiểu chia
+### 5.2 Thêm chi tiêu nhanh
 
-| Kiểu | UI | Validation |
-|---|---|---|
-| Đều (`equal`) | Chọn participants; hiển thị mỗi người | Amount >0; remainder deterministic. |
-| Theo số tiền (`exact`) | Một input cho từng participant | Tổng exact = amount. |
-| Theo phần trăm (`percentage`) | Input % từng participant | Tổng =100%; amount share integer. |
-| Theo phần (`shares`) | Input số phần, preview ratio | Shares >0; tổng phần không rỗng. |
+Từ tab Chi phí, FAB `+` mở bottom sheet S10 với con trỏ ở ô số tiền. Mặc định: người trả là mình, chia đều cho tất cả thành viên còn hoạt động. 4 chạm: số tiền, (tên tùy chọn), Lưu. Tên khoản bỏ trống thì dùng tên hạng mục. Lưu theo kiểu lạc quan; xung đột được báo khi đồng bộ.
 
-### 6.4 Hiển thị VietQR
+### 5.3 Chọn kiểu chia
 
-1. Trong Transfer, user bấm “Hiện VietQR”.
-2. App kiểm tra recipient có bankBin/accountNumber/accountName; thiếu thì hướng dẫn bổ sung.
-3. App render payload từ server/validated client model; che account number trong phần text.
-4. Hiển thị QR, amount, recipient, addInfo và cảnh báo “Tripmate không xác nhận giao dịch ngân hàng”.
-5. User copy/share; khi quay lại Transfer, trạng thái vẫn `pending`.
+Bốn nút phân đoạn: **Đều**, **Số tiền**, **%**, **Phần**. Với mỗi kiểu, mỗi dòng thành viên có ô nhập (trừ Đều, chỉ có ô chọn tham gia). Phía dưới có thanh tổng kiểm tra: "Còn thiếu 20.000₫" hoặc "Khớp ✓". Nút Lưu bị khóa cho đến khi khớp.
 
-## 7. Design tokens gợi ý
+### 5.4 Hiển thị QR thanh toán (S13)
 
-### Màu sắc
+Mở từ nút Thanh toán. QR lớn nằm giữa, bên dưới là số tiền, ngân hàng, số tài khoản (nút sao chép), nội dung chuyển khoản. Tăng độ sáng màn hình nếu có thể. Có nút "Đã chuyển" để đánh dấu. Nếu người nhận chưa nhập thông tin ngân hàng: hiển thị thông báo và nút "Nhắc [tên] nhập thông tin".
 
-| Token | Giá trị gợi ý | Dùng cho |
-|---|---|---|
-| `color-primary` | `#2563EB` | CTA, link, active tab |
-| `color-primary-foreground` | `#FFFFFF` | Text trên primary |
-| `color-success` | `#15803D` | Confirmed/success, không dùng một mình |
-| `color-warning` | `#B45309` | Stale, pending, warning |
-| `color-danger` | `#B91C1C` | Void, revoke, error |
-| `color-surface` | `#FFFFFF` | Card/sheet |
-| `color-muted` | `#64748B` | Secondary text |
-| `color-border` | `#E2E8F0` | Divider/input border |
+---
 
-### Typography và spacing
+## 6. Design tokens
+
+### 6.1 Màu sắc
+
+| Token | Giá trị | Dùng cho |
+|-------|---------|----------|
+| `--brand` | `#0F766E` (teal 700) | CTA chính, liên kết |
+| `--brand-soft` | `#CCFBF1` | Nền nhấn nhẹ |
+| `--bg` | `#FAFAF9` | Nền trang |
+| `--surface` | `#FFFFFF` | Thẻ |
+| `--text` | `#1C1917` | Chữ chính |
+| `--muted` | `#57534E` | Chữ phụ (đạt tương phản 4.5:1 trên nền trắng) |
+| `--border` | `#E7E5E4` | Viền |
+| `--positive` | `#15803D` | Được nhận tiền |
+| `--negative` | `#B91C1C` | Phải trả |
+| `--warning` | `#B45309` | Cảnh báo |
+
+Màu không là tín hiệu duy nhất: số dư luôn kèm dấu `+`/`−` và chữ.
+
+### 6.2 Typography
 
 | Token | Giá trị |
-|---|---|
-| Font | Inter hoặc system sans; hỗ trợ rõ dấu tiếng Việt. |
-| Body | 16px / line-height 24px trên mobile. |
-| Caption | 13–14px; không dùng dưới 12px cho thông tin quan trọng. |
-| Heading | 20–28px, weight 600–700. |
-| Spacing | Scale 4px: 4/8/12/16/24/32. |
-| Radius | `8px` input/button, `12px` card, `16px` bottom sheet. |
-| Touch target | Tối thiểu 44×44px. |
-| Motion | 150–200ms; respect `prefers-reduced-motion`. |
+|-------|---------|
+| Font | Be Vietnam Pro hoặc Inter (hỗ trợ tiếng Việt đầy đủ); fallback hệ thống |
+| Cỡ chữ | 12 / 14 / 16 (thân) / 20 / 24 / 32 (số tiền lớn) |
+| Số tiền | Dùng chữ số tabular (`tabular-nums`), căn phải |
+| Độ cao dòng | 1.5 cho nội dung, 1.2 cho tiêu đề |
 
-### Component shadcn/ui gợi ý
+### 6.3 Khoảng cách, bo góc, trạng thái
 
-`Button`, `Input`, `Textarea`, `Label`, `Card`, `Badge`, `Tabs`, `Dialog`, `Drawer`, `Sheet`, `AlertDialog`, `Select`, `Popover`, `Calendar`, `Checkbox`, `RadioGroup`, `Switch`, `Progress`, `Skeleton`, `Toast/Sonner`, `Tooltip`, `DropdownMenu`, `Command`, `ScrollArea`, `Separator`, `Avatar`, `Accordion`.
+| Token | Giá trị |
+|-------|---------|
+| Khoảng cách | Thang 4 px: 4, 8, 12, 16, 24, 32 |
+| Bo góc | 8 px (nút, ô nhập), 12 px (thẻ), 16 px (bottom sheet) |
+| Đổ bóng | Rất nhẹ, chỉ cho bottom sheet và FAB |
+| Trạng thái | hover, focus (vòng 2 px màu brand), disabled (độ mờ 50%), error (viền `--negative`) |
+| Chuyển động | 150–200 ms, tôn trọng `prefers-reduced-motion` |
 
-## 8. Nội dung giao diện tiếng Việt
+### 6.4 Component shadcn/ui gợi ý
 
-| Context | Label/message đề xuất |
-|---|---|
-| Create | “Tạo chuyến đi”, “Tên chuyến đi”, “Điểm đến (có thể bỏ qua)”, “Ngày đi (có thể thêm sau)” |
-| Join | “Bạn được mời tham gia”, “Tên hiển thị của bạn”, “Tham gia chuyến đi” |
-| Invite | “Mời bạn đi cùng”, “Sao chép link mời”, “Link này đã được thu hồi” |
-| Poll | “Đang mở”, “Bạn đã bình chọn”, “Chốt kết quả”, “Kết quả đã được chốt” |
-| Itinerary | “Lịch trình”, “Hôm nay”, “Thêm hoạt động”, “Chưa có hoạt động nào cho ngày này” |
-| Expense | “Thêm khoản chi”, “Ai đã trả?”, “Ai tham gia khoản này?”, “Cách chia”, “Xem cách chia” |
-| Settlement | “Bạn cần trả”, “Bạn sẽ nhận”, “Các khoản cần chuyển”, “Đã đánh dấu đã trả”, “Đã xác nhận đã nhận” |
-| QR | “Hiện VietQR”, “Sao chép nội dung”, “QR chỉ tạo hướng dẫn chuyển khoản; không xác nhận giao dịch” |
-| Error | “Có lỗi khi lưu. Dữ liệu bạn nhập vẫn được giữ lại.”, “Bạn không có quyền thực hiện thao tác này.” |
-| Offline | “Bạn đang ngoại tuyến”, “Dữ liệu có thể chưa mới nhất”, “Bản nháp sẽ được giữ trên thiết bị” |
-| Empty | “Chưa có khoản chi”, “Thêm khoản đầu tiên để bắt đầu tính quyết toán” |
-| Tone | Thân thiện, trung tính, cụ thể; tránh đổ lỗi và tránh ngôn ngữ ngân hàng quá kỹ thuật. |
+`Button`, `Input`, `Label`, `Tabs`, `Card`, `Sheet` (bottom sheet) hoặc `Drawer`, `Dialog`, `AlertDialog`, `Badge`, `Avatar`, `Checkbox`, `ToggleGroup`, `Select`, `Progress`, `Skeleton`, `Sonner` (toast), `DropdownMenu`, `Calendar`, `Separator`. Thêm thư viện kéo thả (dnd-kit) cho lịch trình ở Phase 4.
 
-## 9. Câu hỏi mở
+---
 
-1. Bottom navigation có giữ cố định 4 tab Overview/Lịch/Chi/Quyết toán hay cho phép owner/member có tab khác nhau?
-2. Có cần hỗ trợ Zalo share trực tiếp hay MVP chỉ copy link/Web Share API?
-3. Trip preview trước join được hiển thị destination/date nào nếu owner chưa chốt hoặc chưa nhập?
-4. Có cho phép owner customize màu/ảnh trip không, hay giữ giao diện tối giản trong MVP?
-5. Khi user vuốt đóng expense sheet với dữ liệu chưa lưu, dùng confirm dialog hay tự lưu draft luôn?
-6. Có cần bản desktop/tablet riêng cho người tổ chức không, hay responsive layout là đủ?
-7. QR có cho download image hay chỉ hiển thị/copy để giảm rủi ro lưu bank data trên máy?
+## 7. Nội dung giao diện (tiếng Việt)
+
+Giọng văn: thân thiện, ngắn gọn, xưng "bạn", không dùng từ chuyên môn.
+
+| Ngữ cảnh | Nội dung |
+|----------|----------|
+| Nút tạo chuyến | Tạo chuyến |
+| Rỗng — danh sách chuyến | Chưa có chuyến nào. Tạo chuyến đầu tiên và rủ cả nhóm vào nhé. |
+| Màn tham gia | **[Tên owner]** mời bạn vào chuyến **[Tên chuyến]** |
+| Ô tên | Bạn muốn mọi người gọi bạn là gì? |
+| Nút vào nhóm | Vào nhóm |
+| Chọn danh tính | Bạn là ai trong nhóm? |
+| Link hết hiệu lực | Link này không còn dùng được. Hãy nhờ người tổ chức gửi lại link mới. |
+| Vote | Vote / Đã vote |
+| Chốt kèo | Chốt kèo / Mở lại |
+| Rỗng — ý tưởng | Chưa có ý tưởng nào. Thêm điểm đến đầu tiên nhé. |
+| Thêm chi tiêu | Thêm chi tiêu / Ai trả? / Chia cho ai? / Kiểu chia |
+| Kiểu chia | Chia đều / Theo số tiền / Theo % / Theo phần |
+| Kiểm tra tổng | Còn thiếu 20.000₫ / Dư 5.000₫ / Khớp ✓ |
+| Lưu thành công | Đã lưu khoản chi |
+| Số dư dương | Bạn được nhận 200.000₫ |
+| Số dư âm | Bạn cần trả 175.000₫ |
+| Số dư 0 | Bạn không nợ ai |
+| Quyết toán | Quyết toán / Cần chuyển / Giải thích cách tính |
+| Thanh toán | Thanh toán / Đã chuyển / Đã nhận |
+| Chưa có tài khoản | [Tên] chưa nhập thông tin nhận tiền. |
+| Nhắc nhở | Nhắc [Tên] nhập thông tin |
+| Chốt quyết toán | Chốt quyết toán / Mở lại quyết toán |
+| Cảnh báo sửa sau chốt | Chuyến đã chốt quyết toán. Sửa khoản chi sẽ làm số dư thay đổi. Tiếp tục? |
+| Rời nhóm | Rời nhóm. Khoản chi của bạn vẫn được giữ để tính toán. |
+| Lỗi mạng | Mất kết nối. Dữ liệu sẽ được đồng bộ khi có mạng. |
+| Lỗi chung | Có lỗi xảy ra. Thử lại nhé. |
+| Gợi ý liên kết Google | Liên kết Google để không mất dữ liệu khi đổi điện thoại. |
+
+---
+
+## Câu hỏi mở
+
+1. Tab thứ 5 nên gọi là "Quyết toán" hay "Chia tiền"? Thuật ngữ "chốt kèo" và "quyết toán" có dễ hiểu với mọi nhóm tuổi?
+2. Có cần chế độ tối (dark mode) trong MVP không?
+3. Font: có cần tự host Be Vietnam Pro, hay dùng Inter qua `next/font`?
+4. Poll ngày dạng lưới có đọc được trên màn hình 360 px khi có 10+ người không?
+5. Màn hình "Việc cần làm" ở S05 có dùng dữ liệu nào để cá nhân hóa?
 
 ## Quyết định cần chốt
 
-| Mã | Quyết định | Đề xuất mặc định |
-|---|---|---|
-| DEC-UX-09 | Navigation | Bottom tabs trong trip: Tổng quan, Lịch, Chi tiêu, Quyết toán; Members/Settings ở menu phụ. |
-| DEC-UX-10 | Share | Dùng Web Share API nếu có, fallback copy link; chưa tích hợp API riêng của Zalo/Messenger. |
-| DEC-UX-11 | Expense close | Nếu có draft, confirm “Giữ bản nháp” hoặc “Xóa bản nháp”; không mất âm thầm. |
-| DEC-UX-12 | QR output | Hiển thị + copy payload; cho phép share ảnh QR ở bản MVP nếu không log dữ liệu nhạy cảm. |
-| DEC-UX-13 | Desktop | Dùng responsive layout; không làm dashboard desktop riêng cho MVP. |
+| ID | Quyết định | Đề xuất |
+|----|-----------|---------|
+| D-16 | Tên tab thanh toán | "Quyết toán" kèm chú thích "Ai trả ai" |
+| D-17 | Dark mode | Hoãn sau MVP |
+| D-18 | Font | Be Vietnam Pro qua `next/font` |
+| D-19 | Poll ngày trên mobile | Dạng thẻ theo phương án (mỗi phương án hiển thị tổng hợp), lưới chỉ ở desktop |

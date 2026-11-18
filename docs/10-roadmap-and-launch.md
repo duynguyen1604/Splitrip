@@ -1,164 +1,186 @@
-# Tripmate — Roadmap, Risk và Launch Plan
+# Tripmate — Lộ trình, Rủi ro và Ra mắt
 
-**Mục đích:** Lập lịch xây dựng MVP 8–10 tuần, quản lý rủi ro, chạy closed pilot và chuẩn bị tăng trưởng không tốn tiền.
+- **Mục đích:** Lên lịch theo tuần cho solo dev, quản lý rủi ro triển khai, kế hoạch thử nghiệm kín, ra mắt và tăng trưởng không tốn tiền, cách đo lường và hướng đi sau MVP.
+- **Phiên bản:** 0.1
+- **Cập nhật lần cuối:** 18/11/2026
 
-**Phiên bản:** 0.1
+## Tóm tắt
 
-**Cập nhật lần cuối:** 2026-11-17
+Phát triển MVP trong 10 tuần (6 phase, khớp `04`), thử nghiệm kín với 10–20 nhóm bạn thật từ tuần 9, ra mắt công khai mềm vào khoảng tuần 13. Tăng trưởng dựa vào vòng lặp tự nhiên: mỗi link mời là một lần quảng bá cho sản phẩm, cộng với nội dung ngắn trong các cộng đồng du lịch. Đo lường tối giản, tôn trọng riêng tư, phần lớn KPI lấy trực tiếp từ dữ liệu của chính hệ thống. Các tính năng sau MVP chỉ bắt đầu khi đạt điều kiện cụ thể.
 
-**Tóm tắt:** Solo developer xây MVP trong 8 tuần kỹ thuật, dành tuần 9–10 cho pilot 10–20 nhóm và sửa lỗi. Mỗi tuần có một mốc kiểm tra có thể dừng hoặc giảm scope. Public launch chỉ xảy ra khi core money/RLS/join ổn định, không chỉ khi UI đã đẹp.
+---
 
-## 1. Lộ trình 10 tuần
+## 1. Lộ trình theo tuần
 
-| Tuần | Mục tiêu | Deliverable | Mốc kiểm tra |
-|---:|---|---|---|
-| 1 | Foundation | React/Vite/TypeScript, Supabase project/local, migrations skeleton, anonymous auth, Docker/CI | Tạo session, lint/typecheck/build/test pass. |
-| 2 | Vertical slice A | Create trip, owner membership, invite link/preview | Creator tạo trip và mở link trên browser khác. |
-| 3 | Vertical slice B | Redeem invite, member list, equal expense, balance cơ bản | E2E create → join → expense → balance pass. |
-| 4 | Poll | Destination/date poll, vote, result, lock, RLS | 3 member vote; lock owner-only; reload nhất quán. |
-| 5 | Itinerary | Day/item, reorder, source poll, overview summary | Nhóm chốt kèo và xem lịch trình trên mobile. |
-| 6 | Expense đầy đủ | Exact/percentage/shares, budget estimate, edit/void, rounding | Test ALG/TC expense pass; no invariant drift. |
-| 7 | Settlement | Balance snapshot, greedy transfers, states, breakdown | 16 algorithm cases + transfer state E2E pass. |
-| 8 | VietQR + hardening | QR/fallback, PWA, realtime fallback, RLS/security, Sentry | Release candidate 0 P0/P1 known; staging deploy. |
-| 9 | Closed pilot start | 5–10 nhóm, observe sessions, support channel, feedback | Tỷ lệ join/activation và lỗi thực tế được ghi. |
-| 10 | Closed pilot finish | 10–20 nhóm lũy kế, fix top issues, launch decision | Go/no-go public; backlog post-MVP được phân loại. |
+Giả định: làm việc khoảng 25–35 giờ/tuần. Nếu ít hơn, kéo dài mốc theo tỷ lệ. Mỗi phase có 20% thời gian đệm cho sửa lỗi (D-15).
 
-### Mốc go/no-go
+| Tuần | Phase | Công việc chính | Mốc kiểm tra cuối giai đoạn |
+|------|-------|-----------------|-----------------------------|
+| 1 | P0 Nền tảng | Khởi tạo dự án, Supabase (dev/staging/prod), CI, đăng nhập ẩn danh, Sentry, cron giữ Supabase hoạt động và backup | **M0:** push `main` tự triển khai; tạo được phiên ẩn danh; migration chạy từ DB trống |
+| 2–3 | P1 Lát cắt mỏng nhất | Tạo chuyến, mời, vào nhóm, thêm khoản chi chia đều, số dư | **M1:** bạn và 2–3 người thân dùng thử cho một chuyến thật; E2E-01/02 đạt; RLS test đạt |
+| 4–5 | P2 Quyết toán và VietQR | 4 kiểu chia, tối giản nợ, QR, đánh dấu đã trả, thành viên ảo, sửa/xóa khoản chi | **M2:** TC/PT đạt; **QR quét được trên 4 app ngân hàng thật**; một nhóm nội bộ quyết toán xong một chuyến |
+| 6–7 | P3 Ý tưởng, vote, poll ngày | Ý tưởng, vote, poll ngày, chốt kèo, khôi phục danh tính, đổi mã mời | **M3:** realtime vote dưới 3 giây; E2E-05/06 đạt |
+| 8 | P4 Lịch trình và dự toán | Lịch trình theo ngày, tạo từ ý tưởng, kéo thả, dự toán | **M4:** vòng "trước, trong, sau chuyến" chạy trọn vẹn |
+| 9–10 | P5 PWA và chất lượng | PWA, offline đọc, liên kết Google, QA thủ công, chính sách riêng tư, sửa lỗi | **M5:** checklist MVP (`09` mục 5) đạt; bắt đầu thử nghiệm kín |
+| 9–12 | Thử nghiệm kín | 10–20 nhóm dùng thật, thu phản hồi, sửa lỗi nóng | **M6:** đạt tiêu chí kết thúc thử nghiệm (mục 3.5) |
+| 13 | Ra mắt mềm | Công bố ở cộng đồng nhỏ, theo dõi sát tải và lỗi | **M7:** không có sự cố nghiêm trọng trong 7 ngày |
+| 14+ | Tăng trưởng | Nội dung, cải tiến theo dữ liệu | Theo KPI ở `01` mục 6 |
 
-```mermaid
-flowchart LR
-    A[Tuần 3: vertical slice] -->|Pass| B[Tuần 5: poll + itinerary]
-    A -->|Fail| A1[Cắt scope và sửa identity/RLS]
-    B -->|Pass| C[Tuần 7: settlement]
-    B -->|Fail| B1[Giữ core expense, hoãn polish]
-    C -->|Pass| D[Tuần 8: release candidate]
-    C -->|Fail| C1[Hoãn QR/pilot, sửa money invariant]
-    D -->|Pass| E[Tuần 9–10: closed pilot]
-    D -->|Fail| D1[Không đưa user thật vào]
-    E --> F[Public MVP hoặc quay lại hardening]
-```
+**Quy tắc cắt giảm phạm vi** khi chậm tiến độ (theo thứ tự cắt đầu tiên): FR-28 (đề nghị chỉnh phần chia), FR-17 (kéo thả, dùng nút lên/xuống), FR-08 (liên kết Google), NFR-11 (ghi offline), FR-25/FR-26. **Không cắt:** chia tiền đúng, RLS, VietQR, vào bằng link.
 
-## 2. Bảng rủi ro
+---
 
-| ID | Rủi ro | Xác suất | Tác động | Trigger | Giảm thiểu | Owner/điểm kiểm |
-|---|---|---|---|---|---|---|
-| LR-01 | Solo dev trễ vì scope | Cao | Cao | Tuần 4 còn nhiều Must chưa chạy | Giữ vertical slice; hoãn budget/Google/QR image nếu cần | Review cuối mỗi tuần |
-| LR-02 | Tính tiền sai | Trung bình | Rất cao | Invariant fail hoặc user sửa tay | Integer arithmetic, test fixtures, no silent rounding | Trước tuần 7 |
-| LR-03 | RLS lộ trip | Trung bình | Rất cao | Cross-trip test đọc được row | Deny-by-default, test 2 user/2 trip, review policy | Mỗi migration |
-| LR-04 | Anonymous session mất | Cao | Cao | Pilot báo mất trip sau đổi máy | Prompt Google sau value, recovery copy, export cân nhắc | Trước pilot |
-| LR-05 | Invite abuse | Trung bình | Cao | Spike redeem/guess | Hash token, TTL/revoke, rate limit, limits | Trước pilot |
-| LR-06 | VietQR sai/không quét | Trung bình | Cao | QR scan fail | Provider/library đã test, fallback copy, test bank sample | Tuần 8 |
-| LR-07 | Free tier bị vượt | Trung bình | Cao | Quota >70% hoặc latency tăng | Pagination, realtime scoped, no receipt storage, alert | Hằng tuần |
-| LR-08 | User không dùng app ngoài chat | Cao | Trung bình | Invite join cao nhưng activation thấp | Deep link context, one-tap actions, share summary | Tuần 9 |
-| LR-09 | Scope privacy/retention chưa rõ | Trung bình | Cao | User hỏi xóa/bank data | Privacy copy, no raw logs, manual deletion runbook | Trước public |
-| LR-10 | Realtime stale/conflict | Trung bình | Trung bình | Dữ liệu khác giữa 2 browser | Invalidate/refetch, version check, stale badge | Tuần 8 |
-| LR-11 | Không tuyển được nhóm pilot | Trung bình | Cao | Tuần 8 chưa có danh sách >10 nhóm | Tuyển qua network cá nhân, community, incentive phi tiền | Bắt đầu tuần 6 |
-| LR-12 | QR/payment tạo hiểu nhầm app xác nhận tiền | Thấp | Cao | User báo “đã chuyển” nhưng chưa nhận | Ngôn ngữ trạng thái tách biệt, recipient confirmation | UX/QA gate |
+## 2. Rủi ro triển khai và kế hoạch
 
-## 3. Closed pilot với 10–20 nhóm
+Rủi ro sản phẩm/kinh doanh nằm ở `01` mục 8 (RK-xx). Dưới đây là rủi ro về kế hoạch và triển khai (RM-xx).
 
-### Tuyển nhóm
+| ID | Rủi ro | Xác suất | Tác động | Cách giảm thiểu |
+|----|--------|----------|----------|-----------------|
+| RM-01 | Quá tải vì làm một mình, trễ tiến độ | Cao | Cao | Quy tắc cắt phạm vi (mục 1); đệm 20%; làm lát cắt mỏng trước |
+| RM-02 | QR không quét được ở một số ngân hàng | Trung bình | Cao | Thử từ P2, không đợi cuối; luôn kèm số tài khoản dạng văn bản; có cách dự phòng dùng dịch vụ tạo ảnh bên thứ ba |
+| RM-03 | Lỗi làm tròn gây sai tiền | Thấp (nếu test tốt) | Rất cao | TC/PT bắt buộc; đối chiếu SQL và client; kiểm toán số dư trước khi cho thử nghiệm kín |
+| RM-04 | Realtime vượt giới hạn gói free khi lan truyền | Trung bình | Trung bình | Chỉ subscribe khi đang mở trang chuyến; theo dõi 150/200 kết nối; kế hoạch nâng gói |
+| RM-05 | Supabase tạm dừng hoặc mất dữ liệu | Trung bình | Cao | Cron giữ hoạt động; backup hằng tuần; đã thử khôi phục |
+| RM-06 | Vi phạm điều khoản hosting khi có thu nhập | Trung bình | Trung bình | Chuyển host trước khi bật nguồn thu (D-01, D-20) |
+| RM-07 | iOS Safari có hành vi khác (PWA, lưu trữ, bàn phím) | Cao | Trung bình | Test iPhone thật sớm (từ P1); hạn chế phụ thuộc tính năng PWA nâng cao |
+| RM-08 | Thử nghiệm kín không tuyển được đủ nhóm | Trung bình | Trung bình | Bắt đầu tuyển từ tuần 6; nhắm 20 nhóm để ít nhất 10 nhóm dùng thật |
+| RM-09 | Người dùng không quay lại sau chuyến đầu | Trung bình | Cao | Thông điệp "chuyến sau" khi quyết toán xong; theo dõi KPI-07 |
+| RM-10 | Vấn đề pháp lý dữ liệu cá nhân | Thấp–Trung bình | Trung bình | Thu thập tối thiểu; chính sách tiếng Việt; tham khảo ý kiến chuyên môn trước ra mắt công khai |
 
-Mục tiêu tuyển 10–20 nhóm, mỗi nhóm 3–8 người, ưu tiên có một chuyến thật trong 2–4 tuần. Cơ cấu:
+---
 
-- 6–10 nhóm bạn đi cuối tuần/đi biển/Đà Lạt.
-- 2–4 nhóm đồng nghiệp hoặc team nhỏ.
-- 2–4 nhóm gia đình/nhóm có một người thường trả tiền trước.
+## 3. Kế hoạch thử nghiệm kín (10–20 nhóm)
 
-Không tuyển toàn bộ từ người quen trực tiếp; cần ít nhất 20–30% người chưa từng nghe chi tiết về sản phẩm để tránh bias hướng dẫn.
+### 3.1 Mục tiêu
 
-### Cách chạy pilot
+Chứng minh vòng giá trị hoạt động ngoài tay người làm ra nó: nhóm thật, chuyến thật, quyết toán thật. Tìm lỗi sai tiền, điểm bối rối khi vào bằng link và QR không quét được.
 
-1. Gửi một câu giới thiệu và invite demo; không tổ chức training dài.
-2. Đề nghị nhóm tự tạo trip, mời mọi người, thêm ít nhất 3 expense và thử settlement.
-3. Có một kênh hỗ trợ riêng để ghi screenshot/error, không yêu cầu gửi dữ liệu ngân hàng.
-4. Thu event funnel và phỏng vấn 15 phút sau khi nhóm hoàn tất hoặc bỏ cuộc.
-5. Không sửa dữ liệu thay người dùng trừ khi cần khôi phục test; mọi hỗ trợ ghi lại để phân biệt product issue và user error.
+### 3.2 Cách tuyển
 
-### Câu hỏi khảo sát
+| Nguồn | Số nhóm mục tiêu | Cách làm |
+|-------|-------------------|----------|
+| Mạng lưới cá nhân (bạn bè, đồng nghiệp, người thân sắp đi chơi) | 6–8 | Hỏi trực tiếp ai sắp có chuyến trong 4–6 tuần tới |
+| Bạn của bạn bè | 4–6 | Nhờ giới thiệu nhóm có người hay tổ chức |
+| Cộng đồng du lịch/phượt trực tuyến | 4–6 | Đăng bài xin tester, **tuân thủ quy định của từng nhóm**, không spam |
+| Đồng nghiệp/CLB (team building) | 2–3 | Thử nhóm đồng nghiệp để kiểm chứng nhóm phụ |
 
-| Nhóm | Câu hỏi |
-|---|---|
-| Onboarding | Bạn hiểu Tripmate dùng để làm gì sau khi mở link không? Bước nào khiến bạn dừng? |
-| Join | Bạn có thấy yên tâm khi join không cần email không? Điều gì còn thiếu để tin link? |
-| Planning | Poll/itinerary thay thế được bao nhiêu tin nhắn/spreadsheet? Phần nào vẫn quay lại chat? |
-| Expense | Thêm khoản chi có nhanh đủ không? Bạn có hiểu ai đang chịu phần? |
-| Settlement | Bạn tin số tiền phải trả/nhận ở mức nào (1–5)? Bạn cần xem thêm gì? |
-| QR/privacy | Bạn có sẵn sàng dùng QR không? Thông tin nào bạn không muốn lưu? |
-| Value | Tính năng nào bạn sẽ dùng lại trong chuyến sau? Tính năng nào thừa? |
-| Trust | Có khoảnh khắc nào app làm bạn sợ mất dữ liệu hoặc tính sai tiền không? |
-| Recommendation | Bạn có gửi Tripmate cho nhóm khác không? Vì sao? |
+Tiêu chí chọn nhóm: sắp có chuyến thật trong khung thử nghiệm; từ 3 người trở lên; ưu tiên nhóm có người ngại việc chia tiền (đúng persona). Tặng huy hiệu "Nhóm sáng lập" trong app (chỉ mang tính tượng trưng, không tốn chi phí).
 
-### Tiêu chí pilot thành công
+### 3.3 Cách thu phản hồi
 
-- ≥60% invite open hoàn tất join.
-- ≥50% nhóm có ít nhất 3 expense.
-- ≥30% nhóm hoàn tất settlement hoặc xác định rõ vì sao chưa hoàn tất.
-- Không có cross-trip data leak, mất expense, hoặc settlement invariant fail.
-- ≥70% người trả lời hiểu khác biệt giữa marked paid và confirmed received.
-- Ít nhất 5 nhóm tự chia sẻ lại link/summary mà không được nhắc trực tiếp.
+| Kênh | Mục đích |
+|------|----------|
+| Nút "Góp ý" trong app (biểu mẫu ngắn có chụp màn hình) | Lỗi và ý kiến tức thời |
+| Cuộc gọi 15 phút với người tổ chức sau chuyến | Hiểu trải nghiệm trọn vẹn, nhất là quyết toán |
+| Khảo sát ngắn gửi mọi thành viên sau khi quyết toán | Đo mức hài lòng của cả nhóm, không chỉ organizer |
+| Theo dõi hành vi tối giản (không cá nhân hóa) | Biết bước nào bị bỏ ngang |
+| Nhóm chat riêng cho tester | Hỗ trợ nhanh |
 
-## 4. Launch và tăng trưởng không tốn tiền
+### 3.4 Câu hỏi khảo sát (sau quyết toán)
 
-### Kênh
+1. Bạn đã mở link mời như thế nào, mất bao lâu để vào được? Có chỗ nào bạn lưỡng lự không?
+2. Trước khi dùng Tripmate, nhóm bạn dùng gì để chia tiền? So với đó, lần này dễ hơn hay khó hơn? (thang 1–5, kèm lý do)
+3. Bạn có tin các con số trong màn hình quyết toán không? Có khoản nào làm bạn thấy sai hoặc khó hiểu?
+4. Việc quét QR chuyển khoản như thế nào? Bạn dùng ngân hàng nào, có quét được không?
+5. Bạn có phải nhắc ai đó trả tiền không? App có giúp việc đó bớt khó chịu không?
+6. Tính năng nào bạn dùng nhiều nhất? Tính năng nào bạn bỏ qua?
+7. Điều gì khiến bạn muốn bỏ app giữa chừng?
+8. Nếu app biến mất ngày mai, bạn thấy tiếc mức nào? (rất tiếc / tiếc / không sao)
+9. Bạn sẽ dùng cho chuyến sau và giới thiệu cho bạn bè chứ?
+10. Một điều bạn muốn app làm tốt hơn?
 
-| Kênh | Cách làm | Nội dung nên thử | Chỉ số |
-|---|---|---|---|
-| Facebook travel groups | Chia sẻ case cụ thể, xin feedback trước khi quảng bá | “Nhóm 6 người chia 17 hóa đơn bằng mấy lần chuyển?” | Link open, join, feedback qualified |
-| Reddit/community | Post build-in-public hoặc câu hỏi workflow | So sánh chat + sheet với một trip workspace | Referral, comment quality |
-| TikTok/Reels | Video 20–40 giây quay luồng mobile | Từ hóa đơn 600k đến 2 transfer | View-to-link, invite creation |
-| Network cá nhân | Mỗi nhóm pilot mời một nhóm khác | Share card sau chuyến đi | Referral code, repeat trip |
-| SEO nhẹ | Landing giải quyết truy vấn “chia tiền đi du lịch nhóm” | Hướng dẫn cách chia bill VND | Organic visit → create trip |
+### 3.5 Tiêu chí kết thúc thử nghiệm (đề xuất, điều chỉnh sau)
 
-### Cơ chế lan truyền tự nhiên
+| Tiêu chí | Ngưỡng |
+|----------|--------|
+| Số nhóm dùng thật (có ít nhất 5 khoản chi) | Ít nhất 10 |
+| Nhóm hoàn tất quyết toán | Ít nhất 6 trên 10 |
+| Lỗi sai tiền / mất dữ liệu | 0 |
+| Người được mời vào nhóm thành công | Ít nhất 70% |
+| Trả lời "rất tiếc nếu app biến mất" (câu 8) | Ít nhất 40% |
 
-- Invite link là artifact tự nhiên của việc dùng app, không phải spam referral.
-- Summary sau trip có nút “Tạo chuyến đi tương tự”, không gắn quảng cáo.
-- Share message nói rõ tên trip và lý do người nhận cần vào, không gửi raw financial data.
-- Không thưởng tiền hoặc tạo leaderboard khiến người dùng gửi link không liên quan.
+---
 
-## 5. Analytics tối giản và quyền riêng tư
+## 4. Ra mắt và tăng trưởng không tốn tiền
 
-### Event allowlist
+### 4.1 Cơ chế lan truyền sẵn có
 
-| Event | Properties được phép | Không gửi |
-|---|---|---|
-| `trip_created` | anonymous installation/session cohort, source, has_date, has_destination | trip name, destination text nếu nhạy cảm, user name |
-| `invite_opened` | invite version, device class, success/failure reason | raw token, URL đầy đủ |
-| `member_joined` | trip size bucket, time bucket | display name, trip id công khai |
-| `poll_locked` | poll type, option count | option labels, voter names |
-| `expense_created` | split method, participant count bucket | title, note, exact amount |
-| `settlement_viewed` | debtor/creditor count bucket | exact balances, account details |
-| `transfer_status_changed` | status transition, time bucket | account number, addInfo |
-| `trip_completed` | duration bucket, member count bucket, expense count bucket | raw trip data |
+| Cơ chế | Mô tả |
+|--------|-------|
+| **Link mời** | Mỗi người được mời thấy trang giới thiệu ngắn và nút "Tạo chuyến của bạn" sau khi vào nhóm |
+| **Tổng kết chuyến** | Màn hình hoàn tất quyết toán có lời mời chia sẻ app cho nhóm khác (không ép) |
+| **QR thanh toán** | Người chuyển tiền lần đầu thấy thương hiệu Tripmate trên màn hình |
+| **Người tổ chức quay lại** | Mỗi organizer hài lòng tạo thêm chuyến (KPI-07) |
 
-Analytics phải có opt-out/notice phù hợp, retention ngắn trong pilot và không dùng làm security/audit source.
+### 4.2 Kênh tăng trưởng
+
+| Kênh | Cách làm | Lưu ý |
+|------|----------|-------|
+| Nhóm Facebook du lịch/phượt | Bài chia sẻ kinh nghiệm "chia tiền 8 người sau chuyến đi" kèm bản dùng thử, **xin phép admin** | Không spam; ưu tiên nội dung có giá trị |
+| Reddit (cộng đồng du lịch Việt Nam) | Bài chia sẻ chân thực, kể quá trình làm | Đọc quy định từng cộng đồng |
+| TikTok/Reels ngắn | Video 15–30 giây: "Quyết toán 6 người trong 10 giây", demo quét QR | Nội dung hài hước, tình huống có thật |
+| Zalo/Messenger | Gửi link vào nhóm chat; tạo ảnh bản xem trước (Open Graph) đẹp cho link mời | Quan trọng: ảnh xem trước giúp tăng tỷ lệ bấm |
+| Truyền miệng từ thử nghiệm kín | Nhờ tester giới thiệu | |
+| SEO trang giới thiệu | Bài viết "Cách chia tiền đi du lịch nhóm", "Mẫu bảng chia tiền" | Dài hạn |
+
+### 4.3 Kế hoạch ra mắt
+
+1. Tuần 13: ra mắt mềm trong các nhóm đã xin phép; theo dõi Sentry và KPI hằng ngày.
+2. Giữ ngưỡng cảnh báo hạ tầng (80% DB/MAU/realtime).
+3. Chỉ mở rộng quảng bá sau khi 7 ngày không có sự cố nghiêm trọng (M7).
+4. Công bố cam kết "miễn phí, không giới hạn số khoản chi" (xem `01` mục 7.3).
+
+---
+
+## 5. Đo lường (analytics tối giản, ưu tiên riêng tư)
+
+| Nguyên tắc | Chi tiết |
+|-----------|----------|
+| Không cookie theo dõi, không bán/chia sẻ dữ liệu | Công bố trong chính sách riêng tư |
+| Không ghi nội dung nhạy cảm (số tài khoản, tên, số tiền chi tiết) vào analytics | Chỉ ghi tên sự kiện và số đếm |
+| Ưu tiên lấy KPI **từ chính cơ sở dữ liệu** | KPI-01, 02, 05, 06 lấy bằng truy vấn tổng hợp, không cần theo dõi người dùng |
+| Phân tích trang cho trang giới thiệu | Công cụ không cookie (ví dụ Cloudflare Web Analytics hoặc Umami tự host); cần kiểm tra điều khoản gói miễn phí hiện hành |
+| Sự kiện sản phẩm tối thiểu | `trip_created`, `invite_opened`, `member_joined`, `expense_added`, `settlement_viewed`, `qr_opened`, `payment_confirmed` (không kèm định danh cá nhân) |
+| Kích thước dữ liệu | Nếu lưu sự kiện trong Supabase, giới hạn lưu 90 ngày để không ăn vào hạn mức 500 MB |
+
+| KPI (`01`) | Nguồn dữ liệu |
+|-----------|---------------|
+| KPI-01, 02, 05, 06 | Truy vấn tổng hợp trên DB |
+| KPI-03, 04 | Sự kiện `invite_opened` so với `member_joined`, thời gian giữa hai sự kiện |
+| KPI-07 | Số organizer có từ 2 chuyến (tính từ DB) |
+| KPI-08 | Sentry |
+
+---
 
 ## 6. Sau MVP
 
-| Hướng | Điều kiện bắt đầu | Spike đầu tiên | Không bắt đầu nếu |
-|---|---|---|---|
-| Gợi ý AI itinerary | ≥30% nhóm dùng itinerary và có câu hỏi lặp | Generate draft từ điểm đến/ngày, user phải approve mọi item | Chưa rõ privacy/prompt data boundary. |
-| OCR hóa đơn | Người dùng thường chụp receipt và manual entry là top pain | OCR on-device/provider, user review trước save | Chưa có receipt retention/RLS/cost budget. |
-| Đa tiền tệ | Có nhóm quốc tế hoặc >10% feedback yêu cầu | Currency per expense + locked FX snapshot | Settlement VND chưa ổn định. |
-| Affiliate | Có traffic/intent rõ và đối tác đáng tin | Một placement có label, không can thiệp vote | Chưa có privacy/quality policy. |
-| Bank/payment integration | Nhu cầu xác nhận payment mạnh và có legal review | Provider sandbox + reconciliation design | Chưa có threat model và support capability. |
+| Hạng mục | Mô tả | Điều kiện bắt đầu |
+|----------|-------|-------------------|
+| Gợi ý bằng AI | Gợi ý lịch trình/ý tưởng từ điểm đến và ngân sách | Có ít nhất 200 chuyến; tab Lịch trình được dùng đều; đã có cách xử lý chi phí gọi mô hình mà không phá cam kết miễn phí |
+| OCR hóa đơn | Chụp hóa đơn, tự điền khoản chi | Thấy nhiều khoản chi nhập tay chậm/sai trong phản hồi; đã giải quyết lưu ảnh (Storage free chỉ 1 GB) |
+| Đa tiền tệ | Chuyến đi nước ngoài, quy đổi tỷ giá | Ít nhất 10% nhóm yêu cầu; có nguồn tỷ giá đáng tin cậy |
+| Affiliate | Gợi ý khách sạn/vé có gắn nhãn | Từ khoảng 500 chuyến/tháng; **đã chuyển host cho phép thương mại**; tuân thủ nguyên tắc ở `01` mục 7.3 |
+| Push notification | Nhắc nợ, thông báo vote | Có người dùng thực sự cài PWA; xử lý hạn chế trên iOS |
+| Hợp nhất tài khoản (`merge_user`) | Đăng nhập Google trên máy mới | Có người dùng thật gặp tình huống này (D-25) |
+| Quỹ chung / chia theo hộ | Nhu cầu của nhóm gia đình, đồng nghiệp | Xác nhận qua phản hồi |
+| Chế độ tối, ảnh bìa, xuất PDF | Cải thiện trải nghiệm | Theo phản hồi |
+
+---
 
 ## Câu hỏi mở
 
-1. MVP public ra sau tuần 10 hay chỉ phát hành invite-only lâu hơn?
-2. Pilot có cần incentive như miễn phí một tính năng future hay chỉ cảm ơn/ghi nhận contributor?
-3. Có thể thu consent phỏng vấn/screenshot từ nhóm thật như thế nào mà không lưu dữ liệu tài chính?
-4. Kênh tăng trưởng ưu tiên Facebook group, TikTok hay network cá nhân?
-5. Ngưỡng quota/cost nào sẽ tự động dừng acquisition?
-6. Có cần status page hoặc support email trước public launch không?
+1. Thời gian làm việc thực tế mỗi tuần của bạn là bao nhiêu? Lộ trình 10 tuần phụ thuộc mạnh vào con số này.
+2. Có chuyến đi thật nào của chính bạn trong 4–8 tuần tới có thể dùng làm bài thử nội bộ đầu tiên (M1, M2)?
+3. Bạn sẵn sàng đăng bài ở nhóm/cộng đồng nào, và đã xin phép admin chưa?
+4. Công cụ analytics không cookie nào được dùng, phụ thuộc quyết định hosting (D-01)?
+5. Có cần đăng ký tên miền và email hỗ trợ riêng trước ra mắt? Ngân sách nhỏ dành cho việc này là bao nhiêu?
 
 ## Quyết định cần chốt
 
-| Mã | Quyết định | Đề xuất mặc định |
-|---|---|---|
-| DEC-LAUNCH-01 | Timeline | 8 tuần build + 2 tuần closed pilot; không rút pilot chỉ để launch sớm. |
-| DEC-LAUNCH-02 | Pilot cohort | 10–20 nhóm, có nhóm bạn/đồng nghiệp/gia đình; ưu tiên chuyến thật. |
-| DEC-LAUNCH-03 | Acquisition | Network + community content trước; chưa chạy paid ads. |
-| DEC-LAUNCH-04 | Analytics | Event allowlist aggregate, không exact financial data. |
-| DEC-LAUNCH-05 | Post-MVP order | Reliability/retention → OCR/AI discovery → multi-currency/affiliate theo evidence. |
+| ID | Quyết định | Đề xuất |
+|----|-----------|---------|
+| D-41 | Thời lượng MVP | 10 tuần dev, thử nghiệm kín từ tuần 9 |
+| D-42 | Thứ tự cắt phạm vi khi trễ | Theo mục 1 |
+| D-43 | Tiêu chí kết thúc thử nghiệm kín | Theo mục 3.5 |
+| D-44 | Cách làm analytics | KPI chủ yếu từ DB; sự kiện tối giản không định danh; công cụ trang không cookie |
+| D-45 | Thời điểm ra mắt mềm | Tuần 13, sau M6 |

@@ -1,0 +1,31 @@
+export type Bank = {
+  bin: string;
+  name: string;
+  shortName: string;
+};
+
+export const POPULAR_BANKS: Bank[] = [
+  { bin: "970436", shortName: "Vietcombank", name: "Ngân hàng Ngoại thương Việt Nam" },
+  { bin: "970418", shortName: "BIDV", name: "Ngân hàng Đầu tư và Phát triển Việt Nam" },
+  { bin: "970415", shortName: "VietinBank", name: "Ngân hàng Công thương Việt Nam" },
+  { bin: "970422", shortName: "MBBank", name: "Ngân hàng Quân đội" },
+  { bin: "970407", shortName: "Techcombank", name: "Ngân hàng Kỹ thương Việt Nam" },
+  { bin: "970416", shortName: "ACB", name: "Ngân hàng Á Châu" },
+  { bin: "970432", shortName: "VPBank", name: "Ngân hàng Việt Nam Thịnh vượng" },
+  { bin: "970423", shortName: "TPBank", name: "Ngân hàng Tiên Phong" },
+  { bin: "970403", shortName: "Sacombank", name: "Ngân hàng Sài Gòn Thương Tín" },
+  { bin: "970441", shortName: "VIB", name: "Ngân hàng Quốc tế Việt Nam" },
+  { bin: "970437", shortName: "HDBank", name: "Ngân hàng Phát triển TP.HCM" },
+  { bin: "970405", shortName: "Agribank", name: "Ngân hàng Nông nghiệp & PTNT Việt Nam" },
+  { bin: "970448", shortName: "OCB", name: "Ngân hàng Phương Đông" },
+  { bin: "970425", shortName: "AnBinhBank", name: "Ngân hàng An Bình" },
+  { bin: "970443", shortName: "SHB", name: "Ngân hàng Sài Gòn - Hà Nội" },
+  { bin: "970414", shortName: "OceanBank", name: "Ngân hàng Đại Dương" },
+  { bin: "970428", shortName: "NamABank", name: "Ngân hàng Nam Á" },
+  { bin: "970431", shortName: "Eximbank", name: "Ngân hàng Xuất Nhập khẩu Việt Nam" },
+  { bin: "970454", shortName: "VietCapitalBank", name: "Ngân hàng Bản Việt (BVBank)" },
+];
+
+export function getBankByBin(bin: string): Bank | undefined {
+  return POPULAR_BANKS.find((b) => b.bin === bin);
+}

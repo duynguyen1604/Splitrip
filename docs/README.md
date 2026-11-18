@@ -6,7 +6,7 @@
 
 ## Tóm tắt
 
-Bộ tài liệu gồm 10 tài liệu chính, một bảng thuật ngữ và README này. Chúng được viết **trước khi có code** và là bản nháp đầu tiên (v0.1) để bạn đọc, chỉnh và trả lời các câu hỏi mở. Trong lúc rà soát chéo đã phát hiện **7 điểm mâu thuẫn hoặc thiếu sót thật** giữa các tài liệu (mục 3), trong đó **3 điểm cần sửa trước khi viết code** (R-01, R-03, R-04).
+Bộ tài liệu gồm 10 tài liệu sản phẩm/thiết kế, một bảng thuật ngữ, lộ trình code và README này. Các tài liệu sản phẩm ban đầu được viết **trước khi có code**; lộ trình triển khai nằm ở `11-coding-phases.md`. Trong lúc rà soát chéo đã phát hiện **7 điểm mâu thuẫn hoặc thiếu sót thật** giữa các tài liệu (mục 3), trong đó **3 điểm cần sửa trước khi hoàn thiện MVP** (R-01, R-03, R-04).
 
 Số liệu thị trường và hạ tầng (giá Splitwise/Wanderlog/TripIt, giới hạn Supabase/Vercel) được tra cứu ngày 18/11/2026 từ các nguồn thứ cấp và **cần kiểm chứng lại** trên trang chính thức trước khi ra quyết định.
 
@@ -26,6 +26,7 @@ Số liệu thị trường và hạ tầng (giá Splitwise/Wanderlog/TripIt, gi
 | 8 | [08-settlement-algorithm.md](08-settlement-algorithm.md) | Chia tiền, làm tròn, tối giản nợ, 18 test case, VietQR | Trước khi code |
 | 9 | [09-test-plan.md](09-test-plan.md) | Chiến lược test, test case, QA thủ công, tiêu chí ra mắt | Song song với code |
 | 10 | [10-roadmap-and-launch.md](10-roadmap-and-launch.md) | Lộ trình tuần, rủi ro, thử nghiệm kín, ra mắt, sau MVP | Trước khi bắt đầu tuần 1 |
+| 11 | [11-coding-phases.md](11-coding-phases.md) | Phân giai đoạn triển khai code, phạm vi từng lát cắt và tiêu chí hoàn thành | Khi bắt đầu code |
 | — | [glossary.md](glossary.md) | Bảng thuật ngữ dùng nhất quán | Tra cứu |
 
 Sau tài liệu 7 và 8 bạn đã đủ ngữ cảnh để chuyển sang prompt viết code (`PROMPT.md`) và đưa các tài liệu này làm ngữ cảnh cho AI viết code.

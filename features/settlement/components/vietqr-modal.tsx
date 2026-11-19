@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import QRCode from "qrcode";
 import { toast } from "sonner";
 import { formatVnd } from "@/lib/money";
@@ -135,9 +136,12 @@ export function VietQrModal({
         <div className="my-4 flex flex-col items-center justify-center">
           <div className="relative rounded-2xl border border-teal-200 bg-white p-3 shadow-md">
             {qrUrl ? (
-              <img
+              <Image
                 src={qrUrl}
                 alt="VietQR Code"
+                width={256}
+                height={256}
+                unoptimized
                 className="size-56 sm:size-64 object-contain rounded-lg"
               />
             ) : (

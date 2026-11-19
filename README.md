@@ -6,26 +6,26 @@
 
 1. Cài Node.js 20.9 trở lên.
 2. Chạy `npm install`.
-3. Tạo Supabase project và bật **Anonymous Sign-ins** trong **Authentication → Providers**.
-4. Chạy SQL migration theo thứ tự trên Supabase SQL Editor:
-   - [0001_phase1_core.sql](./supabase/migrations/0001_phase1_core.sql) (Khởi tạo các bảng cốt lõi, RLS và RPC Phase 1)
-   - [0002_phase2_settlement.sql](./supabase/migrations/0002_phase2_settlement.sql) (Quyết toán, VietQR, thông tin ngân hàng và RPC Phase 2)
-5. Sao chép `.env.example` thành `.env.local`; điền Supabase Project URL và anon/publishable key:
+3. Tạo database PostgreSQL và một user riêng cho ứng dụng.
+4. Sao chép `.env.example` thành `.env.local`; điền `DATABASE_URL`, `BETTER_AUTH_URL` và một secret ngẫu nhiên cho `BETTER_AUTH_SECRET`:
    ```env
-   NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-   NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+   DATABASE_URL=postgresql://user:password@host:5432/database?sslmode=require
+   BETTER_AUTH_URL=http://localhost:3000
+   BETTER_AUTH_SECRET=at-least-32-random-characters
    ```
-6. Chạy `npm run dev`, rồi mở `http://localhost:3000`.
+5. Tạo schema đăng nhập bằng `npm run auth:migrate`.
+6. Áp dụng schema ứng dụng bằng `npm run db:migrate` (có thể chạy lại an toàn; migration đã áp dụng sẽ được bỏ qua).
+7. Khởi động bằng `npm run dev`, rồi mở `http://localhost:3000`. Tạo admin đầu tiên bằng `npm run auth:create-admin -- --email admin@example.com --name "Tripmate Admin" --role admin`.
 
 > [!NOTE]
-> Không đưa `service_role` key vào biến `NEXT_PUBLIC_*` hoặc mã phía trình duyệt. Mọi thao tác ghi dữ liệu nhạy cảm được thực hiện qua RPC `SECURITY DEFINER` và chính sách RLS.
+> `DATABASE_URL` và `BETTER_AUTH_SECRET` chỉ được đọc phía server. Không đưa chúng vào biến `NEXT_PUBLIC_*` hoặc mã trình duyệt. Tài khoản, phiên đăng nhập và vai trò admin được quản lý bằng Better Auth trên PostgreSQL.
 
 ---
 
 ## Phạm vi tính năng đã triển khai
 
 ### Giai đoạn 1 — Chi tiêu & Số dư tối thiểu
-- Tạo chuyến đi, tạo phiên đăng nhập ẩn danh (anonymous auth).
+- Đăng ký và đăng nhập bằng email/mật khẩu; phiên đăng nhập bảo mật.
 - Mời thành viên qua mã mời và link tham gia trực tiếp.
 - Ghi khoản chi chia đều, chọn người trả và danh sách người tham gia.
 - Tính toán số dư tức thời (VND số nguyên), bảo toàn bất biến tổng số dư cả nhóm bằng 0.
@@ -63,12 +63,16 @@ features/
   expenses/                     # Hooks và form/list cho chi tiêu
   settlement/                   # Hooks và components cho quyết toán & tài khoản ngân hàng
 lib/
-  supabase.ts                  # Supabase client singleton & anonymous auth
+  postgres.ts                  # PostgreSQL connection pool & transactions
+  auth.ts                      # Better Auth email/password và admin
+  auth-client.ts               # Trạng thái phiên phía client
+  server-session.ts            # Xác thực phiên phía server
   money.ts                     # formatVnd & splitEqually
   settlement/simplify.ts        # Thuật toán tối giản nợ
   vietqr/                       # Banks catalog, CRC-16/CCITT-FALSE, VietQR TLV builder
-supabase/
+database/
   migrations/
     0001_phase1_core.sql        # Migration Phase 1
     0002_phase2_settlement.sql  # Migration Phase 2
+    0003_trip_short_code.sql    # Mã chuyến công khai cho VietQR
 ```

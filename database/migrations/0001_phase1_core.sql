@@ -1,4 +1,14 @@
+create schema if not exists extensions;
 create extension if not exists pgcrypto with schema extensions;
+
+create or replace function public.current_app_user_id()
+returns uuid
+language sql
+stable
+set search_path = ''
+as $$
+  select nullif(pg_catalog.current_setting('app.user_id', true), '')::uuid;
+$$;
 
 do $$ begin
   create type public.member_role as enum ('owner', 'member');
@@ -34,7 +44,7 @@ create table if not exists public.trips (
 create table if not exists public.trip_members (
   id uuid primary key default gen_random_uuid(),
   trip_id uuid not null references public.trips(id) on delete restrict,
-  user_id uuid references auth.users(id) on delete set null,
+  user_id uuid references public."user"(id) on delete set null,
   display_name text not null check (char_length(btrim(display_name)) between 1 and 30),
   role public.member_role not null default 'member',
   status public.member_status not null default 'active',
@@ -84,7 +94,7 @@ set search_path = ''
 as $$
   select exists (
     select 1 from public.trip_members m
-    where m.trip_id = p_trip and m.user_id = auth.uid()
+    where m.trip_id = p_trip and m.user_id = public.current_app_user_id()
       and m.status = 'active' and m.deleted_at is null
   );
 $$;
@@ -95,23 +105,22 @@ alter table public.expenses enable row level security;
 alter table public.expense_splits enable row level security;
 
 drop policy if exists trips_member_select on public.trips;
-create policy trips_member_select on public.trips for select to authenticated
+create policy trips_member_select on public.trips for select
   using (deleted_at is null and public.is_trip_member(id));
 drop policy if exists trip_members_member_select on public.trip_members;
-create policy trip_members_member_select on public.trip_members for select to authenticated
+create policy trip_members_member_select on public.trip_members for select
   using (deleted_at is null and public.is_trip_member(trip_id));
 drop policy if exists expenses_member_select on public.expenses;
-create policy expenses_member_select on public.expenses for select to authenticated
+create policy expenses_member_select on public.expenses for select
   using (deleted_at is null and public.is_trip_member(trip_id));
 drop policy if exists expense_splits_member_select on public.expense_splits;
-create policy expense_splits_member_select on public.expense_splits for select to authenticated
+create policy expense_splits_member_select on public.expense_splits for select
   using (exists (
     select 1 from public.expenses e
     where e.id = expense_id and e.deleted_at is null and public.is_trip_member(e.trip_id)
   ));
 
-revoke insert, update, delete on public.trips, public.trip_members, public.expenses, public.expense_splits from anon, authenticated;
-grant select on public.trips, public.trip_members, public.expenses, public.expense_splits to authenticated;
+revoke insert, update, delete on public.trips, public.trip_members, public.expenses, public.expense_splits from public;
 
 create or replace function public.create_trip(p_name text, p_display_name text)
 returns table (trip_id uuid, member_id uuid, invite_code text)
@@ -123,7 +132,7 @@ declare
   v_member_id uuid;
   v_code text;
 begin
-  if auth.uid() is null then raise exception 'Cần có phiên đăng nhập để tạo chuyến.'; end if;
+  if public.current_app_user_id() is null then raise exception 'Cần có phiên đăng nhập để tạo chuyến.'; end if;
   if p_name is null or char_length(btrim(p_name)) not between 1 and 80 then
     raise exception 'Tên chuyến cần từ 1 đến 80 ký tự.';
   end if;
@@ -133,7 +142,7 @@ begin
   insert into public.trips(name) values (btrim(p_name))
     returning id, trips.invite_code into v_trip_id, v_code;
   insert into public.trip_members(trip_id, user_id, display_name, role)
-    values (v_trip_id, auth.uid(), btrim(p_display_name), 'owner') returning id into v_member_id;
+    values (v_trip_id, public.current_app_user_id(), btrim(p_display_name), 'owner') returning id into v_member_id;
   return query select v_trip_id, v_member_id, v_code;
 end;
 $$;
@@ -147,7 +156,7 @@ declare
   v_trip public.trips%rowtype;
   v_member_id uuid;
 begin
-  if auth.uid() is null then raise exception 'Cần có phiên đăng nhập để tham gia.'; end if;
+  if public.current_app_user_id() is null then raise exception 'Cần có phiên đăng nhập để tham gia.'; end if;
   if p_display_name is null or char_length(btrim(p_display_name)) not between 1 and 30 then
     raise exception 'Tên hiển thị cần từ 1 đến 30 ký tự.';
   end if;
@@ -156,10 +165,10 @@ begin
       and t.invite_enabled and t.status = 'active';
   if not found then raise exception 'Mã mời không hợp lệ hoặc chuyến đã đóng nhận thành viên.'; end if;
   select m.id into v_member_id from public.trip_members m
-    where m.trip_id = v_trip.id and m.user_id = auth.uid() and m.deleted_at is null;
+    where m.trip_id = v_trip.id and m.user_id = public.current_app_user_id() and m.deleted_at is null;
   if v_member_id is null then
     insert into public.trip_members(trip_id, user_id, display_name, role)
-      values (v_trip.id, auth.uid(), btrim(p_display_name), 'member') returning id into v_member_id;
+      values (v_trip.id, public.current_app_user_id(), btrim(p_display_name), 'member') returning id into v_member_id;
   else
     update public.trip_members set display_name = btrim(p_display_name), status = 'active', left_at = null
       where id = v_member_id;
@@ -189,11 +198,11 @@ declare
   v_split_total numeric;
   v_rows integer;
 begin
-  if auth.uid() is null or not public.is_trip_member(p_trip_id) then
+  if public.current_app_user_id() is null or not public.is_trip_member(p_trip_id) then
     raise exception 'Bạn không có quyền ghi chi tiêu cho chuyến này.';
   end if;
   select m.id into v_actor from public.trip_members m
-    where m.trip_id = p_trip_id and m.user_id = auth.uid()
+    where m.trip_id = p_trip_id and m.user_id = public.current_app_user_id()
       and m.status = 'active' and m.deleted_at is null limit 1;
   if p_client_id is null then raise exception 'Thiếu mã khoản chi.'; end if;
   select e.id into v_expense_id from public.expenses e
@@ -253,7 +262,7 @@ language plpgsql stable security definer
 set search_path = ''
 as $$
 begin
-  if auth.uid() is null or not public.is_trip_member(p_trip) then
+  if public.current_app_user_id() is null or not public.is_trip_member(p_trip) then
     raise exception 'Bạn không có quyền xem số dư chuyến này.';
   end if;
   return query
@@ -280,9 +289,9 @@ revoke all on function public.create_trip(text, text) from public;
 revoke all on function public.join_trip_by_code(text, text) from public;
 revoke all on function public.add_expense(uuid, uuid, text, bigint, uuid, public.expense_category, date, jsonb) from public;
 revoke all on function public.get_trip_balances(uuid) from public;
-grant execute on function public.is_trip_member(uuid) to authenticated;
-grant execute on function public.create_trip(text, text) to authenticated;
-grant execute on function public.join_trip_by_code(text, text) to authenticated;
-grant execute on function public.add_expense(uuid, uuid, text, bigint, uuid, public.expense_category, date, jsonb) to authenticated;
-grant execute on function public.get_trip_balances(uuid) to authenticated;
+grant execute on function public.is_trip_member(uuid) to current_user;
+grant execute on function public.create_trip(text, text) to current_user;
+grant execute on function public.join_trip_by_code(text, text) to current_user;
+grant execute on function public.add_expense(uuid, uuid, text, bigint, uuid, public.expense_category, date, jsonb) to current_user;
+grant execute on function public.get_trip_balances(uuid) to current_user;
 

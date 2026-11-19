@@ -40,27 +40,27 @@ alter table public.settlements enable row level security;
 alter table public.member_bank_accounts enable row level security;
 
 drop policy if exists settlements_member_select on public.settlements;
-create policy settlements_member_select on public.settlements for select to authenticated
+create policy settlements_member_select on public.settlements for select
   using (deleted_at is null and public.is_trip_member(trip_id));
 
 drop policy if exists member_bank_accounts_owner on public.member_bank_accounts;
-create policy member_bank_accounts_owner on public.member_bank_accounts for all to authenticated
+create policy member_bank_accounts_owner on public.member_bank_accounts for all
   using (
     exists (
       select 1 from public.trip_members m
-      where m.id = member_id and m.user_id = auth.uid() and m.deleted_at is null
+      where m.id = member_id and m.user_id = public.current_app_user_id() and m.deleted_at is null
     )
   )
   with check (
     exists (
       select 1 from public.trip_members m
-      where m.id = member_id and m.user_id = auth.uid() and m.deleted_at is null
+      where m.id = member_id and m.user_id = public.current_app_user_id() and m.deleted_at is null
     )
   );
 
-revoke insert, update, delete on public.settlements, public.member_bank_accounts from anon, authenticated;
-grant select on public.settlements to authenticated;
-grant select, insert, update on public.member_bank_accounts to authenticated;
+revoke insert, update, delete on public.settlements, public.member_bank_accounts from public;
+grant select on public.settlements to current_user;
+grant select, insert, update on public.member_bank_accounts to current_user;
 
 -- 4. Update get_trip_balances to include confirmed settlements
 create or replace function public.get_trip_balances(p_trip uuid)
@@ -69,7 +69,7 @@ language plpgsql stable security definer
 set search_path = ''
 as $$
 begin
-  if auth.uid() is null or not public.is_trip_member(p_trip) then
+  if public.current_app_user_id() is null or not public.is_trip_member(p_trip) then
     raise exception 'Bạn không có quyền xem số dư chuyến này.';
   end if;
 
@@ -130,7 +130,7 @@ as $$
 declare
   v_member public.trip_members%rowtype;
 begin
-  if auth.uid() is null then
+  if public.current_app_user_id() is null then
     raise exception 'Cần có phiên đăng nhập.';
   end if;
 
@@ -141,11 +141,11 @@ begin
     raise exception 'Thành viên không tồn tại.';
   end if;
 
-  if v_member.user_id <> auth.uid() then
+  if v_member.user_id <> public.current_app_user_id() then
     -- Check if caller is trip owner
     if not exists (
       select 1 from public.trip_members m
-      where m.trip_id = v_member.trip_id and m.user_id = auth.uid()
+      where m.trip_id = v_member.trip_id and m.user_id = public.current_app_user_id()
         and m.role = 'owner' and m.status = 'active' and m.deleted_at is null
     ) then
       raise exception 'Bạn chỉ có thể cập nhật thông tin nhận tiền của chính mình.';
@@ -184,7 +184,7 @@ language plpgsql stable security definer
 set search_path = ''
 as $$
 begin
-  if auth.uid() is null or not public.is_trip_member(p_trip_id) then
+  if public.current_app_user_id() is null or not public.is_trip_member(p_trip_id) then
     raise exception 'Bạn không có quyền truy cập thông tin chuyến này.';
   end if;
 
@@ -210,13 +210,13 @@ declare
   v_from_member uuid;
   v_settlement_id uuid;
 begin
-  if auth.uid() is null or not public.is_trip_member(p_trip_id) then
+  if public.current_app_user_id() is null or not public.is_trip_member(p_trip_id) then
     raise exception 'Bạn không có quyền thực hiện trong chuyến này.';
   end if;
 
   select m.id into v_from_member
   from public.trip_members m
-  where m.trip_id = p_trip_id and m.user_id = auth.uid()
+  where m.trip_id = p_trip_id and m.user_id = public.current_app_user_id()
     and m.status = 'active' and m.deleted_at is null limit 1;
 
   if v_from_member is null then
@@ -263,7 +263,7 @@ declare
   v_is_receiver boolean := false;
   v_is_owner boolean := false;
 begin
-  if auth.uid() is null then
+  if public.current_app_user_id() is null then
     raise exception 'Cần có phiên đăng nhập.';
   end if;
 
@@ -282,14 +282,14 @@ begin
   -- Receiver check
   select exists (
     select 1 from public.trip_members m
-    where m.id = v_settlement.to_member and m.user_id = auth.uid()
+    where m.id = v_settlement.to_member and m.user_id = public.current_app_user_id()
       and m.deleted_at is null
   ) into v_is_receiver;
 
   -- Trip owner check
   select exists (
     select 1 from public.trip_members m
-    where m.trip_id = v_settlement.trip_id and m.user_id = auth.uid()
+    where m.trip_id = v_settlement.trip_id and m.user_id = public.current_app_user_id()
       and m.role = 'owner' and m.status = 'active' and m.deleted_at is null
   ) into v_is_owner;
 
@@ -317,7 +317,7 @@ declare
   v_settlement public.settlements%rowtype;
   v_can_delete boolean := false;
 begin
-  if auth.uid() is null then
+  if public.current_app_user_id() is null then
     raise exception 'Cần có phiên đăng nhập.';
   end if;
 
@@ -333,7 +333,7 @@ begin
   select exists (
     select 1 from public.trip_members m
     where (m.id = v_settlement.from_member or m.id = v_settlement.to_member or (m.trip_id = v_settlement.trip_id and m.role = 'owner'))
-      and m.user_id = auth.uid() and m.deleted_at is null
+      and m.user_id = public.current_app_user_id() and m.deleted_at is null
   ) into v_can_delete;
 
   if not v_can_delete then
@@ -355,13 +355,13 @@ language plpgsql security definer
 set search_path = ''
 as $$
 begin
-  if auth.uid() is null then
+  if public.current_app_user_id() is null then
     raise exception 'Cần có phiên đăng nhập.';
   end if;
 
   if not exists (
     select 1 from public.trip_members m
-    where m.trip_id = p_trip_id and m.user_id = auth.uid()
+    where m.trip_id = p_trip_id and m.user_id = public.current_app_user_id()
       and m.role = 'owner' and m.status = 'active' and m.deleted_at is null
   ) then
     raise exception 'Chỉ người tạo chuyến mới có quyền chốt sổ chi tiêu.';
@@ -380,13 +380,13 @@ language plpgsql security definer
 set search_path = ''
 as $$
 begin
-  if auth.uid() is null then
+  if public.current_app_user_id() is null then
     raise exception 'Cần có phiên đăng nhập.';
   end if;
 
   if not exists (
     select 1 from public.trip_members m
-    where m.trip_id = p_trip_id and m.user_id = auth.uid()
+    where m.trip_id = p_trip_id and m.user_id = public.current_app_user_id()
       and m.role = 'owner' and m.status = 'active' and m.deleted_at is null
   ) then
     raise exception 'Chỉ người tạo chuyến mới có quyền mở lại sổ chi tiêu.';
@@ -400,10 +400,10 @@ end;
 $$;
 
 -- 11. Grant permissions
-grant execute on function public.save_bank_account(uuid, text, text, text) to authenticated;
-grant execute on function public.get_payment_target(uuid, uuid) to authenticated;
-grant execute on function public.mark_paid(uuid, uuid, bigint) to authenticated;
-grant execute on function public.confirm_payment(uuid) to authenticated;
-grant execute on function public.delete_settlement(uuid) to authenticated;
-grant execute on function public.lock_trip(uuid) to authenticated;
-grant execute on function public.unlock_trip(uuid) to authenticated;
+grant execute on function public.save_bank_account(uuid, text, text, text) to current_user;
+grant execute on function public.get_payment_target(uuid, uuid) to current_user;
+grant execute on function public.mark_paid(uuid, uuid, bigint) to current_user;
+grant execute on function public.confirm_payment(uuid) to current_user;
+grant execute on function public.delete_settlement(uuid) to current_user;
+grant execute on function public.lock_trip(uuid) to current_user;
+grant execute on function public.unlock_trip(uuid) to current_user;

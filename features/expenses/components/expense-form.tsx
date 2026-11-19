@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 import { formatVnd, splitEqually } from "@/lib/money";
 import { CATEGORIES, localDateString } from "@/lib/constants";
@@ -9,7 +9,6 @@ import type { Member } from "@/features/trips/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
 import { PlusCircle, Loader2 } from "lucide-react";
 
 interface ExpenseFormProps {
@@ -31,22 +30,12 @@ export function ExpenseForm({
   const [title, setTitle] = useState("");
   const [amount, setAmount] = useState("");
   const [category, setCategory] = useState("food");
-  const [payerId, setPayerId] = useState("");
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [payerIdOverride, setPayerIdOverride] = useState<string | null>(null);
+  const payerId = payerIdOverride ?? self?.id ?? activeMembers[0]?.id ?? "";
+  const [selectedIdsOverride, setSelectedIdsOverride] = useState<string[] | null>(null);
+  const selectedIds = selectedIdsOverride ?? activeMembers.map((m) => m.id);
 
   const addExpenseMutation = useAddExpense();
-
-  // Initialize defaults when members load
-  useEffect(() => {
-    if (activeMembers.length > 0) {
-      if (!payerId) {
-        setPayerId(self?.id || activeMembers[0].id);
-      }
-      if (selectedIds.length === 0) {
-        setSelectedIds(activeMembers.map((m) => m.id));
-      }
-    }
-  }, [activeMembers, self, payerId, selectedIds.length]);
 
   const numericAmount = Number(amount.replace(/[.,\s₫]/g, ""));
   const perPersonEstimate =
@@ -55,16 +44,19 @@ export function ExpenseForm({
       : 0;
 
   function handleToggleMember(id: string) {
-    setSelectedIds((prev) =>
-      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
-    );
+    setSelectedIdsOverride((current) => {
+      const selected = current ?? activeMembers.map((m) => m.id);
+      return selected.includes(id)
+        ? selected.filter((item) => item !== id)
+        : [...selected, id];
+    });
   }
 
   function handleSelectAll() {
     if (selectedIds.length === activeMembers.length) {
-      setSelectedIds([]);
+      setSelectedIdsOverride([]);
     } else {
-      setSelectedIds(activeMembers.map((m) => m.id));
+      setSelectedIdsOverride(activeMembers.map((m) => m.id));
     }
   }
 
@@ -148,7 +140,7 @@ export function ExpenseForm({
             id="payer"
             required
             value={payerId}
-            onChange={(e) => setPayerId(e.target.value)}
+            onChange={(e) => setPayerIdOverride(e.target.value)}
             className="h-10 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground shadow-xs outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-600/20"
           >
             {activeMembers.map((member) => (

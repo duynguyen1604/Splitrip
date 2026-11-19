@@ -5,6 +5,7 @@ export type TripRow = {
   start_date: string | null;
   end_date?: string | null;
   invite_code: string;
+  short_code: string;
   status?: string;
 };
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { ensureAnonymousSession, getErrorMessage } from "@/lib/supabase";
+import { callRpc, ensureAuthenticatedUser } from "@/lib/api-client";
 import { tripKeys } from "@/lib/query-client";
 
 type JoinTripInput = {
@@ -19,13 +19,11 @@ export function useJoinTrip() {
 
   return useMutation({
     mutationFn: async ({ code, displayName }: JoinTripInput): Promise<JoinTripOutput> => {
-      const { supabase } = await ensureAnonymousSession();
-      const { data, error } = await supabase.rpc("join_trip_by_code", {
+      await ensureAuthenticatedUser();
+      const data = await callRpc<JoinTripOutput[]>("join_trip_by_code", {
         p_code: code.trim(),
         p_display_name: displayName.trim(),
       });
-
-      if (error) throw new Error(getErrorMessage(error));
       const result = Array.isArray(data) ? data[0] : data;
       if (!result?.trip_id) {
         throw new Error("Mã mời không hợp lệ hoặc chuyến đã đóng nhận thành viên.");

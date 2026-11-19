@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
+import { AuthActions } from "@/components/auth-actions";
 
 interface TopbarProps {
   subtitle?: string;
@@ -29,6 +30,7 @@ export function Topbar({ subtitle, rightAction }: TopbarProps) {
             </span>
           )}
           {rightAction}
+          <AuthActions />
         </div>
       </div>
     </header>

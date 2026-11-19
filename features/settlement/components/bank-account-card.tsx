@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 import { POPULAR_BANKS } from "@/lib/vietqr/banks";
 import {
@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Building2, Check, CreditCard, Loader2 } from "lucide-react";
+import type { BankAccount } from "@/features/settlement/types";
 
 interface BankAccountCardProps {
   memberId: string;
@@ -31,21 +32,25 @@ export function BankAccountCard({
   const { data: bankAccount, isLoading } = useMemberBankAccount(memberId);
   const saveMutation = useSaveBankAccount();
 
-  const [bankBin, setBankBin] = useState("970436");
-  const [accountNumber, setAccountNumber] = useState("");
-  const [accountName, setAccountName] = useState(displayName.toUpperCase());
+  const [draft, setDraft] = useState<BankAccount | null>(null);
   const [isEditing, setIsEditing] = useState(false);
 
-  useEffect(() => {
-    if (bankAccount) {
-      setBankBin(bankAccount.bank_bin);
-      setAccountNumber(bankAccount.account_number);
-      setAccountName(bankAccount.account_name);
-      setIsEditing(false);
-    } else {
-      setIsEditing(true);
-    }
-  }, [bankAccount]);
+  const bankBin = draft?.bank_bin ?? bankAccount?.bank_bin ?? "970436";
+  const accountNumber = draft?.account_number ?? bankAccount?.account_number ?? "";
+  const accountName =
+    draft?.account_name ?? bankAccount?.account_name ?? displayName.toUpperCase();
+  const showEditForm = isEditing || !bankAccount;
+
+  function updateDraft(changes: Partial<BankAccount>) {
+    setDraft((current) => ({
+      member_id: memberId,
+      bank_bin: current?.bank_bin ?? bankAccount?.bank_bin ?? "970436",
+      account_number: current?.account_number ?? bankAccount?.account_number ?? "",
+      account_name:
+        current?.account_name ?? bankAccount?.account_name ?? displayName.toUpperCase(),
+      ...changes,
+    }));
+  }
 
   async function handleSave(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -68,6 +73,7 @@ export function BankAccountCard({
       });
       toast.success("Đã lưu thông tin tài khoản nhận tiền!");
       setIsEditing(false);
+      setDraft(null);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Không thể lưu thông tin.";
       toast.error(msg);
@@ -93,11 +99,14 @@ export function BankAccountCard({
               </CardDescription>
             </div>
           </div>
-          {bankAccount && !isEditing && (
+          {bankAccount && !showEditForm && (
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setIsEditing(true)}
+              onClick={() => {
+                setDraft(bankAccount);
+                setIsEditing(true);
+              }}
               className="text-xs h-8"
             >
               Chỉnh sửa
@@ -110,7 +119,7 @@ export function BankAccountCard({
           <div className="flex items-center justify-center py-6">
             <Loader2 className="size-5 animate-spin text-teal-700" />
           </div>
-        ) : isEditing ? (
+        ) : showEditForm ? (
           <form onSubmit={handleSave} className="space-y-3.5">
             <div className="space-y-1">
               <Label htmlFor="bank-select" className="text-xs font-semibold">
@@ -119,7 +128,7 @@ export function BankAccountCard({
               <select
                 id="bank-select"
                 value={bankBin}
-                onChange={(e) => setBankBin(e.target.value)}
+                onChange={(e) => updateDraft({ bank_bin: e.target.value })}
                 className="h-10 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground shadow-xs outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-600/20"
               >
                 {POPULAR_BANKS.map((b) => (
@@ -140,7 +149,9 @@ export function BankAccountCard({
                 inputMode="numeric"
                 placeholder="Ví dụ: 1023456789"
                 value={accountNumber}
-                onChange={(e) => setAccountNumber(e.target.value)}
+                onChange={(e) =>
+                  updateDraft({ account_number: e.target.value })
+                }
                 className="h-10 font-mono"
               />
             </div>
@@ -154,7 +165,9 @@ export function BankAccountCard({
                 required
                 placeholder="NGUYEN VAN A"
                 value={accountName}
-                onChange={(e) => setAccountName(e.target.value.toUpperCase())}
+                onChange={(e) =>
+                  updateDraft({ account_name: e.target.value.toUpperCase() })
+                }
                 className="h-10 uppercase"
               />
             </div>
@@ -179,7 +192,10 @@ export function BankAccountCard({
                   type="button"
                   variant="ghost"
                   size="sm"
-                  onClick={() => setIsEditing(false)}
+                  onClick={() => {
+                    setDraft(null);
+                    setIsEditing(false);
+                  }}
                 >
                   Hủy
                 </Button>

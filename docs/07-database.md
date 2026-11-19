@@ -115,11 +115,12 @@ create type payment_status  as enum ('marked_paid', 'confirmed');
 | start_date, end_date | date | null; `end_date >= start_date`; tối đa 30 ngày (BR-10) | |
 | emoji | text | null | Bìa chuyến |
 | invite_code | text | unique, not null, 12 ký tự | Sinh ngẫu nhiên, đổi được |
+| short_code | text | unique, not null, 6 ký tự hex | Mã công khai trong nội dung chuyển khoản; không dùng thay invite code |
 | invite_enabled | boolean | default true | Tắt nhận thành viên mới |
 | status | trip_status | default 'active' | |
 | created_at, updated_at, deleted_at | timestamptz | | |
 
-Index: unique `invite_code`; `(deleted_at)` một phần.
+Index: unique `invite_code`, unique `short_code`; `(deleted_at)` một phần.
 
 ### 3.2 `trip_members`
 
@@ -350,7 +351,7 @@ Tất cả là `SECURITY DEFINER`, `set search_path = public`, kiểm tra quyề
 
 | RPC | Mô tả | Quyền | Ghi chú |
 |-----|-------|-------|---------|
-| `create_trip(name, destination, start_date, end_date, emoji)` | Tạo chuyến + thành viên owner của người gọi, sinh `invite_code` | Mọi phiên (kể cả ẩn danh) | Giới hạn số chuyến tạo mỗi ngày |
+| `create_trip(name, destination, start_date, end_date, emoji)` | Tạo chuyến + thành viên owner của người gọi, sinh `invite_code`; `short_code` được DB tạo riêng | Mọi phiên (kể cả ẩn danh) | Giới hạn số chuyến tạo mỗi ngày |
 | `join_trip_by_code(code, display_name)` | Tham gia chuyến; trả `trip_id`, `member_id` | Mọi phiên | Kiểm tra `invite_enabled`, giới hạn thành viên, giới hạn tốc độ; idempotent nếu đã là thành viên |
 | `list_claimable_members(code)` | Trả danh sách thành viên ảo/chưa gắn thiết bị để chọn "Tôi là…" | Mọi phiên có mã hợp lệ | Chỉ trả `id` và `display_name` |
 | `claim_member(member_id)` | Gắn `user_id` vào thành viên ảo | Người gọi có mã hợp lệ | `UPDATE ... WHERE user_id IS NULL`; 0 hàng = đã bị nhận (EC-06) |

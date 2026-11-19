@@ -1,7 +1,6 @@
 "use client";
 
 import type { Member } from "@/features/trips/types";
-import { Badge } from "@/components/ui/badge";
 import { Crown, User } from "lucide-react";
 
 interface MemberListProps {

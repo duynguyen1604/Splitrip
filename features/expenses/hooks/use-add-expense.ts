@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { ensureAnonymousSession, getErrorMessage } from "@/lib/supabase";
+import { callRpc, ensureAuthenticatedUser } from "@/lib/api-client";
 import { tripKeys } from "@/lib/query-client";
 
 export type AddExpenseInput = {
@@ -19,10 +19,10 @@ export function useAddExpense() {
 
   return useMutation({
     mutationFn: async (input: AddExpenseInput): Promise<string> => {
-      const { supabase } = await ensureAnonymousSession();
+      await ensureAuthenticatedUser();
       const clientId = crypto.randomUUID();
 
-      const { data, error } = await supabase.rpc("add_expense", {
+      const data = await callRpc<string>("add_expense", {
         p_trip_id: input.tripId,
         p_client_id: clientId,
         p_title: input.title.trim(),
@@ -33,7 +33,6 @@ export function useAddExpense() {
         p_splits: input.splits,
       });
 
-      if (error) throw new Error(getErrorMessage(error));
       return data as string;
     },
     onSuccess: (_, variables) => {

@@ -1,6 +1,13 @@
 import { crc16CcittFalse } from "./crc16";
 
 function tlv(id: string, val: string): string {
+  if (!/^\d{2}$/.test(id)) {
+    throw new Error(`Mã TLV không hợp lệ: ${id}`);
+  }
+  if (val.length > 99) {
+    throw new RangeError(`Giá trị TLV ${id} vượt quá 99 ký tự.`);
+  }
+
   const len = String(val.length).padStart(2, "0");
   return `${id}${len}${val}`;
 }
@@ -19,7 +26,8 @@ export function sanitizeMemo(memo: string): string {
     .replace(/\s+/g, " ")
     .trim()
     .toUpperCase()
-    .slice(0, 25);
+    .slice(0, 25)
+    .trimEnd();
 }
 
 export type VietQrPayloadOptions = {
@@ -38,16 +46,37 @@ export function buildVietQrPayload({
   amount,
   memo,
 }: VietQrPayloadOptions): string {
+  const normalizedBankBin = bankBin.trim();
+  const normalizedAccountNumber = accountNumber.trim();
+
+  if (!/^\d{6}$/.test(normalizedBankBin)) {
+    throw new Error("Mã BIN ngân hàng phải gồm đúng 6 chữ số.");
+  }
+  if (
+    normalizedAccountNumber.length < 3 ||
+    normalizedAccountNumber.length > 30 ||
+    !/^[\x20-\x7e]+$/.test(normalizedAccountNumber)
+  ) {
+    throw new Error("Số tài khoản phải có từ 3 đến 30 ký tự hợp lệ.");
+  }
+  if (
+    amount !== undefined &&
+    (!Number.isSafeInteger(amount) || amount < 1 || amount > 1_000_000_000)
+  ) {
+    throw new RangeError("Số tiền VietQR phải là số nguyên từ 1 đến 1 tỷ đồng.");
+  }
+
   let res = "";
 
   // 00: Payload Format Indicator (01)
   res += tlv("00", "01");
 
   // 01: Point of Initiation Method (12 = Dynamic có số tiền, 11 = Static)
-  res += tlv("01", amount && amount > 0 ? "12" : "11");
+  res += tlv("01", amount === undefined ? "11" : "12");
 
   // 38: Merchant Account Information (NAPAS)
-  const beneficiaryOrg = tlv("00", bankBin.trim()) + tlv("01", accountNumber.trim());
+  const beneficiaryOrg =
+    tlv("00", normalizedBankBin) + tlv("01", normalizedAccountNumber);
   const tag38 =
     tlv("00", "A000000727") +
     tlv("01", beneficiaryOrg) +
@@ -58,8 +87,8 @@ export function buildVietQrPayload({
   res += tlv("53", "704");
 
   // 54: Transaction Amount
-  if (amount && amount > 0) {
-    res += tlv("54", String(Math.floor(amount)));
+  if (amount !== undefined) {
+    res += tlv("54", String(amount));
   }
 
   // 58: Country Code (VN)

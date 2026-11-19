@@ -12,7 +12,7 @@ import {
 } from "@/features/settlement/hooks/use-settlement-data";
 import { simplifyDebts, type Transfer } from "@/lib/settlement/simplify";
 import { formatVnd } from "@/lib/money";
-import { ensureAnonymousSession } from "@/lib/supabase";
+import { apiRequest, ensureAuthenticatedUser } from "@/lib/api-client";
 import { BankAccountCard } from "@/features/settlement/components/bank-account-card";
 import { VietQrModal } from "@/features/settlement/components/vietqr-modal";
 import {
@@ -31,7 +31,6 @@ import {
   Unlock,
   QrCode,
   Scale,
-  Send,
   Trash2,
   AlertCircle,
   Loader2,
@@ -39,10 +38,16 @@ import {
 } from "lucide-react";
 
 export default function TripSettlePage() {
-  const { data, refetch: refetchTrip } = useTripContext();
+  const { data } = useTripContext();
   const { trip, members, balances, userId } = data;
 
-  const { data: settlements = [], refetch: refetchSettlements } =
+  const {
+    data: settlements = [],
+    isLoading: settlementsLoading,
+    isError: settlementsError,
+    error: settlementsQueryError,
+    refetch: refetchSettlements,
+  } =
     useSettlements(trip.id);
 
   const markPaidMutation = useMarkPaid();
@@ -65,6 +70,9 @@ export default function TripSettlePage() {
     accountName: string;
   } | null>(null);
   const [loadingTarget, setLoadingTarget] = useState(false);
+  const [paymentAmounts, setPaymentAmounts] = useState<Record<string, string>>(
+    {}
+  );
 
   // Compute suggested transfers using simplifyDebts algorithm
   const suggestedTransfers = useMemo(() => {
@@ -72,36 +80,51 @@ export default function TripSettlePage() {
     for (const b of balances) {
       netMap.set(b.member_id, b.net);
     }
+
+    // A pending transfer has already left the sender's account, even though
+    // balances only include confirmed settlements. Reserve it to avoid
+    // suggesting the same payment again while the receiver checks it.
+    for (const settlement of settlements) {
+      if (settlement.status !== "marked_paid") continue;
+      netMap.set(
+        settlement.from_member,
+        (netMap.get(settlement.from_member) ?? 0) + settlement.amount
+      );
+      netMap.set(
+        settlement.to_member,
+        (netMap.get(settlement.to_member) ?? 0) - settlement.amount
+      );
+    }
+
     const order = members.map((m) => m.id);
     return simplifyDebts(netMap, order);
-  }, [balances, members]);
+  }, [balances, members, settlements]);
 
   const getMemberName = (id: string) =>
     members.find((m) => m.id === id)?.display_name ?? "Thành viên";
 
   // Handle opening VietQR modal
   async function handleOpenVietQr(transfer: Transfer) {
+    if (!canStartPayment || transfer.from !== selfMember?.id) return;
+
     setSelectedTransfer(transfer);
     setLoadingTarget(true);
 
     try {
-      const { supabase } = await ensureAnonymousSession();
-      const { data: targetData, error } = await supabase.rpc(
-        "get_payment_target",
-        {
-          p_trip_id: trip.id,
-          p_to_member: transfer.to,
-        }
+      await ensureAuthenticatedUser();
+      const res = await apiRequest<{
+        bank_bin: string;
+        account_number: string;
+        account_name: string;
+      } | null>(
+        `/api/trips/${trip.id}/payment-target?toMember=${encodeURIComponent(transfer.to)}`
       );
-
-      if (error) throw error;
-      const res = Array.isArray(targetData) ? targetData[0] : targetData;
 
       if (!res?.bank_bin || !res?.account_number) {
         toast.info(
           `${getMemberName(
             transfer.to
-          )} chưa cập nhật tài khoản ngân hàng. Hãy nhắn bạn ấy thêm tài khoản bên dưới nhé!`
+          )} chưa cập nhật tài khoản ngân hàng. Hãy nhờ bạn ấy bổ sung thông tin để nhận tiền.`
         );
         setTargetBank(null);
       } else {
@@ -122,20 +145,27 @@ export default function TripSettlePage() {
   }
 
   // Quick mark paid
-  async function handleQuickMarkPaid(transfer: Transfer) {
+  async function handleQuickMarkPaid(
+    transfer: Transfer,
+    showSuccessToast = true
+  ): Promise<boolean> {
+    if (!canStartPayment || transfer.from !== selfMember?.id) return false;
+
     try {
       await markPaidMutation.mutateAsync({
         tripId: trip.id,
         toMember: transfer.to,
         amount: transfer.amount,
       });
-      toast.success("Đã ghi nhận thanh toán chờ xác nhận!");
-      refetchSettlements();
-      refetchTrip();
+      if (showSuccessToast) {
+        toast.success("Đã ghi nhận thanh toán chờ xác nhận!");
+      }
+      return true;
     } catch (err: unknown) {
       const msg =
         err instanceof Error ? err.message : "Có lỗi xảy ra khi ghi nhận.";
-      toast.error(msg);
+      if (showSuccessToast) toast.error(msg);
+      return false;
     }
   }
 
@@ -147,8 +177,6 @@ export default function TripSettlePage() {
         settlementId,
       });
       toast.success("Đã xác nhận nhận tiền thành công!");
-      refetchSettlements();
-      refetchTrip();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Không thể xác nhận.";
       toast.error(msg);
@@ -157,14 +185,16 @@ export default function TripSettlePage() {
 
   // Delete / cancel settlement
   async function handleDelete(settlementId: string) {
+    if (!window.confirm("Bạn có chắc muốn hủy giao dịch đang chờ này không?")) {
+      return;
+    }
+
     try {
       await deleteSettlementMutation.mutateAsync({
         tripId: trip.id,
         settlementId,
       });
       toast.success("Đã hủy giao dịch!");
-      refetchSettlements();
-      refetchTrip();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Không thể hủy.";
       toast.error(msg);
@@ -183,7 +213,6 @@ export default function TripSettlePage() {
           ? "Đã mở lại sổ chi tiêu cho chuyến đi."
           : "Đã chốt sổ chi tiêu thành công!"
       );
-      refetchTrip();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Không thể đổi trạng thái.";
       toast.error(msg);
@@ -196,6 +225,7 @@ export default function TripSettlePage() {
   const confirmedSettlements = settlements.filter(
     (s) => s.status === "confirmed"
   );
+  const canStartPayment = isLocked && !settlementsLoading && !settlementsError;
 
   return (
     <div className="space-y-6">
@@ -257,6 +287,16 @@ export default function TripSettlePage() {
         )}
       </div>
 
+      {!isLocked && (
+        <div className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
+          <AlertCircle className="mt-0.5 size-4 shrink-0" />
+          <p>
+            Chốt sổ chuyến đi trước khi chuyển tiền để số dư không thay đổi trong
+            lúc quyết toán.
+          </p>
+        </div>
+      )}
+
       {/* Suggested Settlements Section */}
       <Card className="rounded-2xl border-border/80 shadow-xs overflow-hidden">
         <CardHeader className="pb-3 border-b border-border/60">
@@ -270,7 +310,7 @@ export default function TripSettlePage() {
                   Gợi ý chuyển tiền tối giản nợ
                 </CardTitle>
                 <CardDescription className="text-xs">
-                  Thuật toán tính toán số giao dịch ít nhất để cả nhóm cân bằng số dư
+                  Giao dịch đang chờ xác nhận được tạm tính để tránh chuyển trùng
                 </CardDescription>
               </div>
             </div>
@@ -280,7 +320,17 @@ export default function TripSettlePage() {
           </div>
         </CardHeader>
         <CardContent className="pt-4">
-          {suggestedTransfers.length === 0 ? (
+          {settlementsLoading ? (
+            <div className="flex items-center justify-center gap-2 py-6 text-xs text-muted-foreground">
+              <Loader2 className="size-4 animate-spin" />
+              Đang tính các khoản cần thanh toán...
+            </div>
+          ) : settlementsError ? (
+            <div className="flex items-center justify-center gap-2 py-6 text-xs text-destructive">
+              <AlertCircle className="size-4 shrink-0" />
+              Không thể tính số tiền cần chuyển khi chưa tải được giao dịch.
+            </div>
+          ) : suggestedTransfers.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-8 text-center">
               <CheckCircle2 className="size-10 text-emerald-600 mb-2" />
               <p className="font-bold text-foreground text-sm">
@@ -297,6 +347,19 @@ export default function TripSettlePage() {
                 const toName = getMemberName(transfer.to);
                 const isFromMe = transfer.from === selfMember?.id;
                 const isToMe = transfer.to === selfMember?.id;
+                const transferKey = `${transfer.from}:${transfer.to}`;
+                const amountInput =
+                  paymentAmounts[transferKey] ?? String(transfer.amount);
+                const paymentAmount = Number(amountInput);
+                const maxPaymentAmount = Math.min(transfer.amount, 1_000_000_000);
+                const isPaymentAmountValid =
+                  Number.isSafeInteger(paymentAmount) &&
+                  paymentAmount > 0 &&
+                  paymentAmount <= maxPaymentAmount;
+                const paymentTransfer = {
+                  ...transfer,
+                  amount: paymentAmount,
+                };
 
                 return (
                   <div
@@ -339,31 +402,104 @@ export default function TripSettlePage() {
 
                     {/* Amount & Action Buttons */}
                     <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0">
-                      <span className="font-black text-foreground text-sm sm:text-base">
-                        {formatVnd(transfer.amount)}
-                      </span>
+                      {isFromMe ? (
+                        <label className="flex flex-col gap-1 text-[10px] font-medium text-muted-foreground">
+                          <span>Số tiền bạn chuyển</span>
+                          <input
+                            type="number"
+                            min={1}
+                            max={maxPaymentAmount}
+                            step={1}
+                            inputMode="numeric"
+                            value={amountInput}
+                            onChange={(event) => {
+                              const value = event.currentTarget.value;
+                              setPaymentAmounts((current) => ({
+                                ...current,
+                                [transferKey]: value,
+                              }));
+                            }}
+                            aria-label={`Số tiền chuyển cho ${toName}`}
+                            aria-invalid={!isPaymentAmountValid}
+                            aria-describedby={`payment-amount-help-${index}`}
+                            className="h-8 w-36 rounded-md border border-input bg-background px-2 text-sm font-semibold text-foreground outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                          />
+                          <span
+                            id={`payment-amount-help-${index}`}
+                            className={
+                              isPaymentAmountValid ? "" : "text-destructive"
+                            }
+                          >
+                            {isPaymentAmountValid
+                              ? `Tối đa ${formatVnd(maxPaymentAmount)}`
+                              : `Nhập số nguyên từ 1 đến ${formatVnd(maxPaymentAmount)}`}
+                          </span>
+                        </label>
+                      ) : (
+                        <span className="font-black text-foreground text-sm sm:text-base">
+                          {formatVnd(transfer.amount)}
+                        </span>
+                      )}
 
-                      <div className="flex items-center gap-1.5">
-                        <Button
-                          size="sm"
-                          onClick={() => handleOpenVietQr(transfer)}
-                          disabled={loadingTarget}
-                          className="h-8 gap-1.5 bg-teal-700 hover:bg-teal-800 text-white font-medium text-xs shadow-xs"
-                        >
-                          <QrCode className="size-3.5" />
-                          VietQR
-                        </Button>
+                      {isFromMe ? (
+                        <div className="flex items-center gap-1.5">
+                          <Button
+                            size="sm"
+                            onClick={() => handleOpenVietQr(paymentTransfer)}
+                            disabled={
+                              !canStartPayment ||
+                              !isPaymentAmountValid ||
+                              loadingTarget
+                            }
+                            title={
+                              !isLocked
+                                ? "Chốt sổ chuyến đi trước khi thanh toán"
+                                : settlementsLoading
+                                ? "Đang tải giao dịch"
+                                : settlementsError
+                                ? "Không thể tải danh sách giao dịch"
+                                : undefined
+                            }
+                            className="h-8 gap-1.5 bg-teal-700 hover:bg-teal-800 text-white font-medium text-xs shadow-xs"
+                          >
+                            {loadingTarget ? (
+                              <Loader2 className="size-3.5 animate-spin" />
+                            ) : (
+                              <QrCode className="size-3.5" />
+                            )}
+                            VietQR
+                          </Button>
 
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleQuickMarkPaid(transfer)}
-                          disabled={markPaidMutation.isPending}
-                          className="h-8 text-xs font-medium"
-                        >
-                          Đã chuyển
-                        </Button>
-                      </div>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => void handleQuickMarkPaid(paymentTransfer)}
+                            disabled={
+                              !canStartPayment ||
+                              !isPaymentAmountValid ||
+                              markPaidMutation.isPending
+                            }
+                            title={
+                              !isLocked
+                                ? "Chốt sổ chuyến đi trước khi thanh toán"
+                                : settlementsLoading
+                                ? "Đang tải giao dịch"
+                                : settlementsError
+                                ? "Không thể tải danh sách giao dịch"
+                                : undefined
+                            }
+                            className="h-8 text-xs font-medium"
+                          >
+                            {paymentAmount < transfer.amount
+                              ? "Đã chuyển một phần"
+                              : "Đã chuyển"}
+                          </Button>
+                        </div>
+                      ) : (
+                        <span className="text-[11px] text-muted-foreground">
+                          Chờ {fromName} chuyển
+                        </span>
+                      )}
                     </div>
                   </div>
                 );
@@ -410,7 +546,28 @@ export default function TripSettlePage() {
               </div>
             </CardHeader>
             <CardContent className="pt-4">
-              {pendingSettlements.length === 0 ? (
+              {settlementsLoading ? (
+                <div className="flex items-center justify-center gap-2 py-5 text-xs text-muted-foreground">
+                  <Loader2 className="size-4 animate-spin" />
+                  Đang tải giao dịch...
+                </div>
+              ) : settlementsError ? (
+                <div className="flex flex-col items-center gap-2 py-5 text-center">
+                  <p className="text-xs text-destructive">
+                    {settlementsQueryError instanceof Error
+                      ? settlementsQueryError.message
+                      : "Không thể tải lịch sử giao dịch."}
+                  </p>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => refetchSettlements()}
+                    className="h-7 text-xs"
+                  >
+                    Thử lại
+                  </Button>
+                </div>
+              ) : pendingSettlements.length === 0 ? (
                 <p className="text-xs text-muted-foreground text-center py-4">
                   Không có giao dịch nào đang chờ xác nhận.
                 </p>
@@ -438,9 +595,9 @@ export default function TripSettlePage() {
                             <span>{toName}</span>
                           </div>
                           <p className="text-[11px] text-muted-foreground mt-0.5">
-                            {new Date(s.marked_at).toLocaleTimeString("vi-VN", {
-                              hour: "2-digit",
-                              minute: "2-digit",
+                            {new Date(s.marked_at).toLocaleString("vi-VN", {
+                              dateStyle: "short",
+                              timeStyle: "short",
                             })}{" "}
                             · {formatVnd(s.amount)}
                           </p>
@@ -464,6 +621,8 @@ export default function TripSettlePage() {
                               variant="ghost"
                               onClick={() => handleDelete(s.id)}
                               disabled={deleteSettlementMutation.isPending}
+                              aria-label="Hủy giao dịch"
+                              title="Hủy giao dịch"
                               className="h-7 text-xs text-muted-foreground hover:text-destructive"
                             >
                               <Trash2 className="size-3" />
@@ -479,7 +638,7 @@ export default function TripSettlePage() {
           </Card>
 
           {/* Confirmed Settlements */}
-          {confirmedSettlements.length > 0 && (
+          {!settlementsLoading && !settlementsError && confirmedSettlements.length > 0 && (
             <Card className="rounded-2xl border-border/80 shadow-xs overflow-hidden">
               <CardHeader className="pb-3 border-b border-border/60">
                 <div className="flex items-center justify-between">
@@ -524,9 +683,14 @@ export default function TripSettlePage() {
           accountName={targetBank.accountName}
           amount={selectedTransfer.amount}
           receiverName={getMemberName(selectedTransfer.to)}
-          tripCode={trip.invite_code}
+          tripCode={trip.short_code}
           senderName={selfMember?.display_name ?? "Ban"}
-          onMarkPaid={() => handleQuickMarkPaid(selectedTransfer)}
+          onMarkPaid={async () => {
+            const succeeded = await handleQuickMarkPaid(selectedTransfer, false);
+            if (!succeeded) {
+              throw new Error("Không thể ghi nhận thanh toán. Vui lòng thử lại.");
+            }
+          }}
         />
       )}
     </div>

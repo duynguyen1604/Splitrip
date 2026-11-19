@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { ensureAnonymousSession, getErrorMessage } from "@/lib/supabase";
+import { callRpc, ensureAuthenticatedUser } from "@/lib/api-client";
 import { tripKeys } from "@/lib/query-client";
 
 type CreateTripInput = {
@@ -20,13 +20,11 @@ export function useCreateTrip() {
 
   return useMutation({
     mutationFn: async ({ name, displayName }: CreateTripInput): Promise<CreateTripOutput> => {
-      const { supabase } = await ensureAnonymousSession();
-      const { data, error } = await supabase.rpc("create_trip", {
+      await ensureAuthenticatedUser();
+      const data = await callRpc<CreateTripOutput[]>("create_trip", {
         p_name: name.trim(),
         p_display_name: displayName.trim(),
       });
-
-      if (error) throw new Error(getErrorMessage(error));
       const result = Array.isArray(data) ? data[0] : data;
       if (!result?.trip_id) {
         throw new Error("Không nhận được dữ liệu chuyến vừa tạo.");

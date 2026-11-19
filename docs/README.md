@@ -6,7 +6,9 @@
 
 ## Tóm tắt
 
-Bộ tài liệu gồm 10 tài liệu sản phẩm/thiết kế, một bảng thuật ngữ, lộ trình code và README này. Các tài liệu sản phẩm ban đầu được viết **trước khi có code**; lộ trình triển khai nằm ở `11-coding-phases.md`. Trong lúc rà soát chéo đã phát hiện **7 điểm mâu thuẫn hoặc thiếu sót thật** giữa các tài liệu (mục 3), trong đó **3 điểm cần sửa trước khi hoàn thiện MVP** (R-01, R-03, R-04).
+Bộ tài liệu gồm 10 tài liệu sản phẩm/thiết kế, một bảng thuật ngữ, lộ trình code và README này. Các tài liệu sản phẩm ban đầu được viết **trước khi có code**; lộ trình triển khai nằm ở `11-coding-phases.md`. Trong lúc rà soát chéo đã phát hiện **7 điểm mâu thuẫn hoặc thiếu sót thật** giữa các tài liệu (mục 3). R-03 đã được xử lý trong code bằng migration `0003_trip_short_code.sql`; R-01 và R-04 vẫn cần hoàn tất trước MVP.
+
+Định hướng sản phẩm mở rộng sang đăng nhập người dùng, quản trị hệ thống, tìm tour, bản đồ và hoạt động trekking được ghi ở [product-expansion-roadmap.md](product-expansion-roadmap.md). Các tài liệu kiến trúc gốc vẫn mô tả Supabase và cần được cập nhật theo kiến trúc PostgreSQL trực tiếp trước khi triển khai các phase tiếp theo.
 
 Số liệu thị trường và hạ tầng (giá Splitwise/Wanderlog/TripIt, giới hạn Supabase/Vercel) được tra cứu ngày 18/11/2026 từ các nguồn thứ cấp và **cần kiểm chứng lại** trên trang chính thức trước khi ra quyết định.
 
@@ -27,6 +29,7 @@ Số liệu thị trường và hạ tầng (giá Splitwise/Wanderlog/TripIt, gi
 | 9 | [09-test-plan.md](09-test-plan.md) | Chiến lược test, test case, QA thủ công, tiêu chí ra mắt | Song song với code |
 | 10 | [10-roadmap-and-launch.md](10-roadmap-and-launch.md) | Lộ trình tuần, rủi ro, thử nghiệm kín, ra mắt, sau MVP | Trước khi bắt đầu tuần 1 |
 | 11 | [11-coding-phases.md](11-coding-phases.md) | Phân giai đoạn triển khai code, phạm vi từng lát cắt và tiêu chí hoàn thành | Khi bắt đầu code |
+| 12 | [product-expansion-roadmap.md](product-expansion-roadmap.md) | Định hướng tài khoản/admin, mobile PWA, tìm tour, bản đồ và trekking | Mở rộng sản phẩm |
 | — | [glossary.md](glossary.md) | Bảng thuật ngữ dùng nhất quán | Tra cứu |
 
 Sau tài liệu 7 và 8 bạn đã đủ ngữ cảnh để chuyển sang prompt viết code (`PROMPT.md`) và đưa các tài liệu này làm ngữ cảnh cho AI viết code.
@@ -119,7 +122,7 @@ Phương pháp: đối chiếu từng cặp tài liệu liên quan (yêu cầu �
 |----|-----|------------------------|--------------------|-------------|
 | R-01 | **Cao** | **Khôi phục danh tính thành viên thật chưa có đường đi trong dữ liệu.** PRD (FR-36, BR-09) và kiến trúc (4.4) cho phép người ẩn danh mất phiên chọn "Tôi là…" để lấy lại danh tính. Nhưng RPC `claim_member` ở `07` chỉ cập nhật khi `user_id IS NULL`, tức chỉ xử lý **thành viên ảo**. Một thành viên thật đã có `user_id` (của phiên đã mất) sẽ không nhận lại được, và `list_claimable_members` cũng không trả họ. | 03, 04 (US-07), 06, 07 | Bổ sung RPC kiểu `request_rebind(member_id)` và `approve_rebind(...)` (chủ phiên cũ hoặc owner duyệt), hoặc "link khôi phục cá nhân" dùng một lần do owner cấp. Cần chốt Q-10 trước. Ghi thêm vào bảng RPC và test T-A10 |
 | R-02 | Trung bình | **Hosting và doanh thu mâu thuẫn.** Brief (mục 7) lên kế hoạch donate/affiliate/quảng cáo, trong khi gói Vercel Hobby chỉ cho phép dự án phi thương mại. Đã được nêu ở `01` mục 7.4 và `06` mục 9.3 nhưng quyết định bị trùng ở hai nơi (D-01, D-20). | 01, 06, 10 | Gộp D-01 và D-20 thành một quyết định duy nhất; đặt mốc "trước khi bật bất kỳ nguồn thu nào" vào checklist ra mắt (đã có ở `09`) |
-| R-03 | **Cao** | **Nội dung chuyển khoản cần "mã ngắn chuyến" nhưng bảng `trips` không có cột đó.** `08` mục 6.4 định dạng `TM <mã ngắn chuyến> <tên>`. Không nên dùng `invite_code` (là bí mật mời vào nhóm). | 07, 08 | Thêm cột `trips.short_code` (4–6 ký tự, không bí mật, unique) vào `07` và RPC `create_trip` |
+| R-03 | **Đã xử lý trong code** | Nội dung chuyển khoản cần mã chuyến công khai; không dùng `invite_code` vì mã này cấp quyền tham gia chuyến. | 07, 08 | Đã thêm `trips.short_code` duy nhất bằng migration `0003_trip_short_code.sql`; VietQR dùng mã này. `create_trip` giữ nguyên giao diện RPC và nhận mã qua giá trị mặc định của DB. |
 | R-04 | **Cao** | **Số dư "chuẩn" khác nhau giữa DB và client khi có khoản chờ xác nhận.** `07` (D-28) chỉ tính thanh toán `confirmed`; `08` (D-34) gợi ý quyết toán có tính khoản `marked_paid`; kiến trúc (D-22) coi RPC là nguồn chuẩn và test PT-06 yêu cầu client và SQL cho cùng `net`. Khi có khoản chờ xác nhận, hai nơi sẽ lệch. | 06, 07, 08, 09 | Định nghĩa hai đại lượng rõ ràng: `net` (chỉ `confirmed`, đối chiếu PT-06) và `net_with_pending` (dùng cho gợi ý). RPC trả cả hai. Cập nhật `08` mục 3 và `07` mục 6 |
 | R-05 | Thấp | **Chỗ ghi sẵn trong SQL nháp chưa hoàn chỉnh:** `get_trip_balances` trả `net = 0` tạm thời. | 07 | Viết lại bằng truy vấn bọc ngoài hoặc cột tính toán trước khi dùng (đã ghi chú trong tài liệu) |
 | R-06 | Thấp | **`trip_budgets` ai sửa chưa nhất quán:** bảng quyền ghi "Owner (hoặc mọi thành viên nếu muốn)", còn quyết định D-31 đề xuất mọi thành viên. | 07 | Chốt Q-31, sửa bảng quyền cho khớp |

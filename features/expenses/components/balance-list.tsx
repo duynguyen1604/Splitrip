@@ -2,7 +2,6 @@
 
 import { formatVnd } from "@/lib/money";
 import type { Balance, Member } from "@/features/trips/types";
-import { Badge } from "@/components/ui/badge";
 import { ArrowDownLeft, ArrowUpRight, Scale } from "lucide-react";
 
 interface BalanceListProps {
